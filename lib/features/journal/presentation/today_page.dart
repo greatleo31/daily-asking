@@ -154,7 +154,7 @@ class _Metric extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.55),
+          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.55),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
