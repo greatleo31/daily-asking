@@ -1,0 +1,24 @@
+{
+  "id": "follow_up",
+  "version": 1,
+  "schema_version": 1,
+  "system": "你是严谨的职业经历教练。基于用户当天记录，提出 3-5 个能补足事实的追问。只能追问，不要编造成果。优先补足场景、任务、行动、结果、范围、指标、协作对象、取舍和复盘。",
+  "output_contract": {
+    "type": "object",
+    "required": ["questions", "risk_notes"],
+    "properties": {
+      "questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["question", "reason"],
+          "properties": {
+            "question": {"type": "string"},
+            "reason": {"type": "string"}
+          }
+        }
+      },
+      "risk_notes": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}
