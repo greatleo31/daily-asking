@@ -14,9 +14,9 @@ ThemeData buildDailyAskingTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: scheme,
     scaffoldBackgroundColor: dark ? const Color(0xFF0C1020) : const Color(0xFFF7F3FF),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
-      color: dark ? const Color(0xFF161B2F) : Colors.white.withOpacity(0.9),
+      color: dark ? const Color(0xFF161B2F) : Colors.white.withValues(alpha: 0.9),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       margin: EdgeInsets.zero,
     ),
@@ -35,7 +35,7 @@ ThemeData buildDailyAskingTheme(Brightness brightness) {
     navigationBarTheme: NavigationBarThemeData(
       elevation: 0,
       indicatorColor: scheme.primaryContainer,
-      backgroundColor: dark ? const Color(0xFF11162A) : Colors.white.withOpacity(0.92),
+      backgroundColor: dark ? const Color(0xFF11162A) : Colors.white.withValues(alpha: 0.92),
     ),
   );
 }

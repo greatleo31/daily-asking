@@ -27,12 +27,12 @@ class CosmicScaffold extends StatelessWidget {
             Positioned(
               right: -72,
               top: -48,
-              child: _GlowOrb(color: scheme.primary.withOpacity(0.22), size: 190),
+              child: _GlowOrb(color: scheme.primary.withValues(alpha: 0.22), size: 190),
             ),
             Positioned(
               left: -64,
               bottom: 90,
-              child: _GlowOrb(color: scheme.secondary.withOpacity(0.18), size: 160),
+              child: _GlowOrb(color: scheme.secondary.withValues(alpha: 0.18), size: 160),
             ),
             Padding(
               padding: padding ?? const EdgeInsets.fromLTRB(20, 18, 20, 18),

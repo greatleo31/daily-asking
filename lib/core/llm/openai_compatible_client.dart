@@ -15,7 +15,7 @@ class OpenAiCompatibleClient implements LlmClient {
 
   @override
   Future<LlmResponse> complete(LlmRequest request) async {
-    final endpoint = Uri.parse(config.baseUrl.replaceAll(RegExp(r'/+$'), '') + '/chat/completions');
+    final endpoint = Uri.parse('${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
     final response = await _httpClient.post(
       endpoint,
       headers: {

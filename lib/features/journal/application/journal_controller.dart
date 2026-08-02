@@ -28,7 +28,7 @@ class JournalController extends StateNotifier<AsyncValue<List<Entry>>> {
   }
 
   Future<void> deleteEntry(String id) async {
-    final next = [...state.value ?? []]..removeWhere((entry) => entry.id == id);
+    final next = <Entry>[...state.value ?? []]..removeWhere((entry) => entry.id == id);
     state = AsyncValue.data(next);
     await _repository.saveEntries(next);
   }
