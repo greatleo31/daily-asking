@@ -1,4 +1,24 @@
-enum ArtifactType { resumeBullet, weeklyReport, interviewCard }
+﻿enum ArtifactType { followUp, resumeBullet, weeklyReport, interviewCard }
+
+extension ArtifactTypeLabel on ArtifactType {
+  String get label {
+    return switch (this) {
+      ArtifactType.followUp => 'AI 追问',
+      ArtifactType.resumeBullet => '简历 bullet',
+      ArtifactType.weeklyReport => '周报',
+      ArtifactType.interviewCard => '面试追问卡',
+    };
+  }
+
+  String get promptId {
+    return switch (this) {
+      ArtifactType.followUp => 'follow_up',
+      ArtifactType.resumeBullet => 'resume_bullet',
+      ArtifactType.weeklyReport => 'weekly_report',
+      ArtifactType.interviewCard => 'interview_card',
+    };
+  }
+}
 
 class Artifact {
   const Artifact({
