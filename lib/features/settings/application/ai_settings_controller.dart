@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,9 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/llm/ai_provider_config.dart';
 import '../../../core/security/secure_vault.dart';
 
+final secureVaultProvider = Provider<SecureVault>((ref) => SecureVault());
+
 final aiSettingsControllerProvider =
     StateNotifierProvider<AiSettingsController, AsyncValue<AiProviderConfig?>>((ref) {
-  return AiSettingsController(SecureVault())..load();
+  return AiSettingsController(ref.watch(secureVaultProvider))..load();
 });
 
 class AiSettingsController extends StateNotifier<AsyncValue<AiProviderConfig?>> {
@@ -54,5 +56,9 @@ class AiSettingsController extends StateNotifier<AsyncValue<AiProviderConfig?>> 
     await prefs.remove(_configKey);
     await _vault.deleteSecret(_keyAlias);
     state = const AsyncValue.data(null);
+  }
+
+  Future<String?> readApiKey(String alias) {
+    return _vault.readSecret(alias);
   }
 }

@@ -108,7 +108,14 @@ class _TodayPageState extends ConsumerState<TodayPage> {
       result: _result.text.trim(),
       blocker: _blocker.text.trim(),
     );
-    await ref.read(journalControllerProvider.notifier).addEntry(entry);
+    try {
+      await ref.read(journalControllerProvider.notifier).addEntry(entry);
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败：$error')));
+      }
+      return;
+    }
     _task.clear();
     _context.clear();
     _action.clear();

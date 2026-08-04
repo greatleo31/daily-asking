@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  本项目是 Daily Asking：本地优先的 Flutter Android APK，帮助实习生/求职者记录真实工作经历，通过 AI 追问补足事实，再生成简历 bullet、周报和面试追问卡。
+  本项目遵循“全栈项目 AI-Coding 五层 SDD 架构”。
+  Spec 先于业务代码；What/How 分离；代码、测试、迁移脚本和构建结果是验证证据，不能替代 Spec。
+  默认 domains: api, data, backend, frontend, testing, operations。
+  当前发布目标为 Android APK GitHub Release；AI 主路径为 BYOK OpenAI-compatible 直连；用户记录本地结构化持久化；不做云同步账号体系。
+  复杂 feature/refactor 必须 proposal/specs/design/tasks 齐全。
+  小 docs/test/fix 可裁剪文档厚度，但不得跳过必要 What、验收标准和回归范围。
+  全栈项目必须标明单机全栈、分布式全栈或混合模式。
+
+rules:
+  proposal:
+    - 必须包含 Why、Scope、Non-Goals、Success Criteria、Change Type。
+    - 必须标明单机全栈、分布式全栈或混合模式。
+    - 必须列出受影响 domains：api、data、backend、frontend、testing、operations。
+  specs:
+    - 必须覆盖 API、Data、Backend、Frontend、Testing、Operations 中受影响的域。
+    - 必须描述权限、错误、边界条件和可验收场景。
+    - API 行为、数据口径、鉴权、安全和错误状态必须可测试。
+    - 禁止写完整伪代码或具体实现步骤。
+  design:
+    - 必须说明模块边界、依赖方向、前后端契约、数据库迁移、失败模式和回滚策略。
+    - 必须列出安全、日志、错误处理和观测方案。
+    - 分布式全栈必须额外说明幂等、重试、限流、降级和上线验证。
+  tasks:
+    - 每个任务必须可独立验证。
+    - 全栈链路按 api/data/backend/frontend/testing/operations 拆分。
+    - 禁止使用“完善”“优化”“处理一下”等不可验收表述。
+
+operations:
+  apply:
+    guidance:
+      - 实现前先重读 proposal/spec/design/tasks。
+      - 优先修改根因，不用表层补丁掩盖架构问题。
+      - 每完成一个原子任务，运行对应验证并记录结果。
+      - 不得把代码、测试或 migration 当作 Spec 替代品；行为变化必须同步 Spec。
+  archive:
+    guidance:
+      - 归档前确认 Spec 与代码一致。
+      - 总结最终行为、验证证据、遗留风险和后续事项。

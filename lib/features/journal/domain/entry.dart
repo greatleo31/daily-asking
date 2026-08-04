@@ -57,6 +57,7 @@ class Entry {
     String? result,
     String? blocker,
     List<String>? tags,
+    DateTime? updatedAt,
   }) {
     return Entry(
       id: id,
@@ -68,7 +69,7 @@ class Entry {
       blocker: blocker ?? this.blocker,
       tags: tags ?? this.tags,
       createdAt: createdAt,
-      updatedAt: DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 
@@ -86,17 +87,18 @@ class Entry {
       };
 
   static Entry fromJson(Map<String, dynamic> json) {
+    final parsedDate = DateTime.parse(json['date'] as String);
     return Entry(
       id: json['id'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: parsedDate,
       task: json['task'] as String? ?? '',
       context: json['context'] as String? ?? '',
       action: json['action'] as String? ?? '',
       result: json['result'] as String? ?? '',
       blocker: json['blocker'] as String? ?? '',
       tags: (json['tags'] as List<dynamic>? ?? const []).cast<String>(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? parsedDate,
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? parsedDate,
     );
   }
 }

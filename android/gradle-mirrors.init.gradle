@@ -1,0 +1,18 @@
+def targetRoot = new File('D:/projectCollection/daily-asking/android').canonicalFile
+
+gradle.beforeProject { project ->
+    if (project.rootProject.projectDir.canonicalFile != targetRoot) {
+        return
+    }
+
+    project.buildscript.repositories.clear()
+    project.buildscript.repositories.maven { url = uri('https://maven.aliyun.com/repository/google') }
+    project.buildscript.repositories.maven { url = uri('https://maven.aliyun.com/repository/central') }
+    project.buildscript.repositories.maven { url = uri('https://maven.aliyun.com/repository/gradle-plugin') }
+    project.buildscript.repositories.google()
+    project.buildscript.repositories.mavenCentral()
+    project.buildscript.repositories.gradlePluginPortal()
+
+    project.repositories.maven { url = uri('https://maven.aliyun.com/repository/google') }
+    project.repositories.maven { url = uri('https://maven.aliyun.com/repository/central') }
+}

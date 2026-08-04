@@ -1,0 +1,45 @@
+# Security Policy
+
+## Supported Scope
+
+Daily Asking v0.1 的安全边界聚焦本地 Android APK、BYOK 模型配置、本地记录、导出包和 GitHub Release 资产。
+
+当前不包含云账号、云同步、托管模型网关或后台管理系统。
+
+## Secret Handling Rules
+
+- 不要提交 API Key、访问令牌、密码、签名 keystore、签名密码或第三方服务凭据。
+- API Key 只能写入系统安全存储。
+- API Key 不得进入本地记录、AI 产物、日志、导出包、迁移包、测试快照或 release notes。
+- 清除 AI 配置必须删除系统安全存储中的 Key。
+- 示例配置只能使用占位值，例如 `sk-...` 或 `your-model-name`。
+
+## AI Data Boundary
+
+- 真实 AI 请求前必须展示 provider、model、调用路径和将发送的字段范围。
+- 默认不得上传整个记录池。
+- 只允许发送当前用户选择任务所需的记录片段和对应 prompt。
+- AI 输出不得编造数字、公司名、项目名、职责范围或影响。
+
+## Reporting a Vulnerability
+
+请不要在公开 issue 中粘贴 API Key、token、日志原文、完整 prompt、个人经历原文或可识别隐私数据。
+
+优先使用 GitHub Security Advisory 私下报告。若仓库未启用 Security Advisory，请创建一个不含敏感细节的 issue，说明影响范围和复现类别，再由维护者约定私下沟通方式。
+
+报告建议包含：
+
+- 受影响版本或 commit
+- 影响范围
+- 最小复现步骤
+- 是否涉及密钥、日志、导出包或 AI 出站数据
+- 你已经做过的验证
+
+## Release Security Checklist
+
+发布 GitHub Release 前必须确认：
+
+- 仓库搜索未发现真实 API Key、token、密码或 keystore 凭据。
+- README 和 release notes 明确 BYOK、本地优先、最小出站和已知限制。
+- APK 签名姿态已说明；debug signing 只能标记为 GitHub preview release。
+- `flutter analyze`、`flutter test` 和 Android release build 的结果已记录。
