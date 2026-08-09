@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "change": "adopt-portable-sdd-workflow",
+  "gates": {
+    "G0": {
+      "status": "approved",
+      "approved_by": "项目负责人",
+      "approved_at": "2026-08-09T00:00:00.000Z",
+      "evidence": ["openspec/changes/adopt-portable-sdd-workflow/proposal.md"]
+    },
+    "G1": {
+      "status": "approved",
+      "approved_by": "项目负责人",
+      "approved_at": "2026-08-09T00:00:00.000Z",
+      "evidence": ["openspec/changes/adopt-portable-sdd-workflow/design.md"]
+    },
+    "G2": {"status": "pending", "approved_by": "", "approved_at": "", "evidence": []},
+    "G3": {"status": "pending", "approved_by": "", "approved_at": "", "evidence": []}
+  },
+  "tasks": {
+    "1.1": {
+      "summary": "接入项目配置与公共协议",
+      "requirements": [],
+      "design": [
+        {"path": "openspec/changes/adopt-portable-sdd-workflow/design.md", "heading": "### 1. 固定内核版本并保存协议快照"},
+        {"path": "openspec/changes/adopt-portable-sdd-workflow/design.md", "heading": "### 2. 项目配置使用 JSON 兼容 YAML"}
+      ],
+      "code_refs": [
+        {"path": ".sdd/project.yaml", "symbol": "kernel_version"},
+        {"path": "docs/sdd/AGENT_PROTOCOL.md", "symbol": "人工门禁"}
+      ],
+      "risks": ["协议快照与内核版本必须一致"]
+    },
+    "1.2": {
+      "summary": "接入 Topic Skills 与项目规则",
+      "requirements": [],
+      "design": [
+        {"path": "openspec/changes/adopt-portable-sdd-workflow/design.md", "heading": "### 3. 新变更必须携带 execution 映射"},
+        {"path": "openspec/changes/adopt-portable-sdd-workflow/design.md", "heading": "### 4. Topic 记忆只作为可选索引"}
+      ],
+      "code_refs": [
+        {"path": "AGENTS.md", "symbol": "Agent SDD"},
+        {"path": ".codex/skills/topic-open/SKILL.md", "symbol": "读取顺序"}
+      ],
+      "risks": ["不得把长期规格复制进 Topic MEMORY"]
+    },
+    "3.2": {
+      "summary": "生成任务验证证据",
+      "requirements": [],
+      "design": [
+        {"path": "openspec/changes/adopt-portable-sdd-workflow/design.md", "heading": "### 5. 项目验证与 CI 分层"}
+      ],
+      "code_refs": [
+        {"path": ".sdd/project.yaml", "symbol": "verification_profiles"}
+      ],
+      "risks": ["验证失败时不得勾选任务或声明完成"]
+    }
+  }
+}
