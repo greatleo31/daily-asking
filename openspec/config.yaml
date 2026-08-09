@@ -1,22 +1,23 @@
 schema: spec-driven
 
 context: |
-  本项目是 Daily Asking：本地优先的 Flutter Android APK，帮助实习生/求职者记录真实工作经历，通过 AI 追问补足事实，再生成简历 bullet、周报和面试追问卡。
+  本项目是 Daily Asking：本地优先的 Flutter Android APK，帮助实习生/求职者记录真实工作经历，通过 AI 追问补足事实，再生成简历要点、周报和面试追问卡。
   本项目遵循“全栈项目 AI-Coding 五层 SDD 架构”。
-  Spec 先于业务代码；What/How 分离；代码、测试、迁移脚本和构建结果是验证证据，不能替代 Spec。
-  默认 domains: api, data, backend, frontend, testing, operations。
-  当前发布目标为 Android APK GitHub Release；AI 主路径为 BYOK OpenAI-compatible 直连；用户记录本地结构化持久化；不做云同步账号体系。
-  复杂 feature/refactor 必须 proposal/specs/design/tasks 齐全。
-  小 docs/test/fix 可裁剪文档厚度，但不得跳过必要 What、验收标准和回归范围。
+  规格先于业务代码；需求与方案分离；代码、测试、迁移脚本和构建结果是验证证据，不能替代规格。
+  默认域：api、data、backend、frontend、testing、operations。
+  当前发布目标为 Android APK GitHub Release；AI 主路径为 BYOK 兼容 OpenAI 接口直连；用户记录本地结构化持久化；不做云同步账号体系。
+  复杂功能或重构必须 proposal、specs、design、tasks 齐全。
+  小型文档、测试或修复可裁剪文档厚度，但不得跳过必要需求、验收标准和回归范围。
   全栈项目必须标明单机全栈、分布式全栈或混合模式。
+  项目文档正文必须使用中文；命令、路径、配置键、API 名、包名和 OpenSpec 语法关键字可保留原文。
 
 rules:
   proposal:
-    - 必须包含 Why、Scope、Non-Goals、Success Criteria、Change Type。
+    - 必须包含原因、范围、非目标、成功标准和变更类型。
     - 必须标明单机全栈、分布式全栈或混合模式。
-    - 必须列出受影响 domains：api、data、backend、frontend、testing、operations。
+    - 必须列出受影响域：api、data、backend、frontend、testing、operations。
   specs:
-    - 必须覆盖 API、Data、Backend、Frontend、Testing、Operations 中受影响的域。
+    - 必须覆盖 API、数据、后端、前端、测试、运维中受影响的域。
     - 必须描述权限、错误、边界条件和可验收场景。
     - API 行为、数据口径、鉴权、安全和错误状态必须可测试。
     - 禁止写完整伪代码或具体实现步骤。
@@ -35,8 +36,8 @@ operations:
       - 实现前先重读 proposal/spec/design/tasks。
       - 优先修改根因，不用表层补丁掩盖架构问题。
       - 每完成一个原子任务，运行对应验证并记录结果。
-      - 不得把代码、测试或 migration 当作 Spec 替代品；行为变化必须同步 Spec。
+      - 不得把代码、测试或迁移当作规格替代品；行为变化必须同步规格。
   archive:
     guidance:
-      - 归档前确认 Spec 与代码一致。
+      - 归档前确认规格与代码一致。
       - 总结最终行为、验证证据、遗留风险和后续事项。

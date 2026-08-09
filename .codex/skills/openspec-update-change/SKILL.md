@@ -1,90 +1,51 @@
 ---
 name: openspec-update-change
-description: Update an OpenSpec change by revising its existing planning artifacts and keeping them coherent with one another. Use when the user wants to revise a change's plan, fold new decisions into it, or reconcile its artifacts after an edit. Never edits code.
+description: 更新一个现有 OpenSpec 变更的规划产物，并保持 proposal、design、specs、tasks 之间一致。只改规划文档，不改代码。
 allowed-tools: Bash(openspec:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: 需要 openspec CLI。
 metadata:
   author: openspec
   version: "1.0"
   generatedBy: "1.7.0"
 ---
 
-Revise a change's existing planning artifacts and keep them coherent. Never edit code.
+修订一个现有 OpenSpec 变更的规划产物，并保持它们彼此一致。此技能绝不编辑实现代码。
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+## 存储仓库选择
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+如用户指定存储仓库，先运行 `openspec store list --json`，再在相关命令中传入 `--store <id>`。否则使用最近的本地 `openspec/` 根目录。
 
-**Steps**
+## 输入
 
-1. **Select the change**
+用户可以指定变更名。若未指定，从上下文推断；若不明确，运行 `openspec list --json`，展示最近修改的 3-4 个变更供用户选择。
 
-   If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes sorted by most recently modified, and ask the user to select one
+## 步骤
 
-   When prompting, present the top 3-4 most recently modified changes as options, showing:
-   - Change name
-   - Schema (from `schema` field if present, otherwise "spec-driven")
-   - Status (e.g., "0/5 tasks", "complete", "no tasks")
-   - How recently it was modified (from `lastModified` field)
+1. 选择变更，并告知“使用变更：<name>”以及如何覆盖。
+2. 读取变更状态：
 
-   Mark the most recently modified change as "(Recommended)" since it's likely what the user wants to update.
-
-   Always announce: "Using change: <name>" and how to override (e.g., `$openspec-update-change <other>`).
-
-2. **Get the change's artifacts**
    ```bash
    openspec status --change "<name>" --json
    ```
-   Parse the JSON to understand current state. The response includes:
-   - `schemaName`: The workflow schema being used (e.g., "spec-driven")
-   - `artifacts`: Array of artifacts with their status ("done", "skipped", "ready", "blocked")
-   - `isComplete`: Boolean indicating if all artifacts are complete
-   - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
-   The artifact ids and paths come from the active schema - do NOT assume them, and do NOT branch on hardcoded artifact names. Custom schemas must work unchanged.
+   使用返回的 schemaName、artifacts、planningHome、changeRoot、artifactPaths 和 actionContext。不要硬编码规划产物名称或路径。
 
-   The files to edit are `artifactPaths.<id>.existingOutputPaths` - the concrete files that exist on disk, already glob-expanded for glob artifacts (e.g. `specs/**/*.md`). Do NOT write to `resolvedOutputPath`: for a glob artifact it is still the glob pattern, not a real file.
+3. 理解用户请求：
+   - 若用户要求具体修订，以该修订为起点。
+   - 若用户只说“更新”或“保持一致”，按一致性审查处理。
 
-3. **Understand the request**
-   - If the user asked for a specific revision ("the design now uses X"), that is the starting edit.
-   - If they only said "update" / "make this coherent", treat it as a coherence review: read the existing artifacts and check them against each other for contradictions, gaps, and duplication.
+4. 读取被请求影响的规划产物以及其他已存在规划产物。
+5. 应用请求变更，并检查其他规划产物是否因此出现矛盾、缺口或重复。
+6. 只修改 `existingOutputPaths` 中已经存在的具体文件，不创建缺失规划产物，也不向 glob 规划产物下发明新文件。
+7. 重大重写前先读取对应规划产物的 instructions。
+8. 输出修订了哪些规划产物、哪些内容被延后，以及推荐的下一步。
 
-4. **Read and reconcile**
-   - Read the artifact(s) the request touches and the change's other existing artifacts.
-   - Apply the requested edit. Then check every other existing artifact against it - in ANY direction: an edit to a later artifact may require revising an earlier one, not only the other way around. Build order is a useful reading order, not a constraint on which artifacts may be revised.
-   - Note everything that is now inconsistent, missing, or contradictory.
-   - Revise only files that already exist (`existingOutputPaths`). Do NOT create artifacts that don't exist yet, and do NOT invent new files under a glob artifact - note them and point the user to `$openspec-continue-change` to create them.
-   - If the change is already coherent, say so and make no edits.
+## 约束
 
-5. **Confirm and apply, one artifact at a time**
-   - Show each proposed revision and why. Write only after the user confirms.
-   - If the user rejects a revision, do not write it - leave that artifact unchanged.
-   - When a substantial rewrite is needed, get that artifact's rules and template first:
-     ```bash
-     openspec instructions <artifact-id> --change "<name>" --json
-     ```
-
-6. **Point to the next step (guidance only - NEVER act on it)**
-   - Artifacts still missing -> suggest `$openspec-continue-change` to create them.
-   - Change already implemented (tasks checked off / already applied) -> the code may no longer match the revised plan; suggest `$openspec-apply-change` to carry the delta into code.
-   - Everything done and implemented -> suggest `$openspec-archive-change`.
-
-**Output**
-
-After each invocation, show:
-- Which artifacts were revised (and which proposed revisions were rejected)
-- Anything deferred to `$openspec-continue-change` (not-yet-created artifacts or files)
-- Where the change stands and the recommended next command
-
-**Guardrails**
-- Planning artifacts only - NEVER edit implementation code. If the revised plan implies code changes, stop and point to `$openspec-apply-change`.
-- Use the artifact ids and paths reported by `openspec status`; never branch on hardcoded artifact names.
-- Edit only the concrete files in `existingOutputPaths`; never write to a glob `resolvedOutputPath`.
-- Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is `$openspec-continue-change`'s job.
-- Confirm every edit with the user before writing.
-- If the request changes the change's *intent* rather than refining it, recommend starting fresh with `$openspec-new-change` (the "Update vs. Start Fresh" heuristic).
-- `$openspec-continue-change` and `$openspec-new-change` may not be installed (core profile). When suggesting one that is unavailable, point to the CLI instead: `openspec status --change "<name>" --json` shows the next artifact and `openspec instructions <artifact-id> --change "<name>" --json` explains how to create it.
+- 只改规划产物，绝不改实现代码。
+- 如果规划变化意味着代码也要变，停止并提示使用 `$openspec-apply-change`。
+- 使用 `openspec status` 返回的规划产物 id 和具体路径。
+- 不写入 glob resolvedOutputPath。
+- 不推进构建边界；缺失规划产物交给继续创建流程。
+- 如果请求改变变更意图而不是细化现有变更，建议新建变更。
