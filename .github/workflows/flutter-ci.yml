@@ -11,6 +11,10 @@ on:
       - 'fix/**'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     name: 静态检查与测试
