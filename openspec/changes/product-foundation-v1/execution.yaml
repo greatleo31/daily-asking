@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "change": "product-foundation-v1",
+  "gates": {
+    "G0": {
+      "status": "approved",
+      "approved_by": "项目负责人",
+      "approved_at": "2026-08-09T22:27:54.9750866+08:00",
+      "evidence": ["openspec/changes/product-foundation-v1/proposal.md#产品发现结论"]
+    },
+    "G1": {"status": "pending", "approved_by": "", "approved_at": "", "evidence": []},
+    "G2": {"status": "pending", "approved_by": "", "approved_at": "", "evidence": []},
+    "G3": {"status": "pending", "approved_by": "", "approved_at": "", "evidence": []}
+  },
+  "tasks": {
+    "1.1": {
+      "summary": "创建 V1 产品史诗规划产物",
+      "requirements": [],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 1. 使用一项产品史诗和连续大功能分支"}],
+      "code_refs": [
+        {"path": "openspec/changes/product-foundation-v1/proposal.md", "symbol": "Daily Asking V1 产品需求文档"},
+        {"path": "openspec/changes/product-foundation-v1/execution.yaml", "symbol": "gates"}
+      ],
+      "risks": ["G1 仍需项目负责人审阅详细 PRD 与方案后明确批准"]
+    },
+    "1.2": {
+      "summary": "记录 G1 人工批准并合入规划基线",
+      "requirements": [],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 1. 使用一项产品史诗和连续大功能分支"}],
+      "code_refs": [{"path": "openspec/changes/product-foundation-v1/execution.yaml", "symbol": "G1"}],
+      "risks": ["自动化验证和 Agent 判断不能替代项目负责人批准"]
+    },
+    "2.1": {
+      "summary": "构建四目的地晨昏视觉原型",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/product-experience/spec.md", "heading": "### Requirement: 首屏必须直接承载核心任务"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 5. 晨昏视觉使用信息令牌，不延续紫色宇宙模板"}],
+      "code_refs": [{"path": "lib/app/theme.dart", "symbol": "buildDailyAskingTheme"}, {"path": "lib/app/shell_page.dart", "symbol": "ShellPage"}],
+      "risks": ["原型不得使用虚假数据冒充最终证据图谱"]
+    },
+    "2.2": {
+      "summary": "完成多视口截图与 G2 人工验收",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/evidence-map/spec.md", "heading": "### Requirement: 晨昏视觉必须服务可读性"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 5. 晨昏视觉使用信息令牌，不延续紫色宇宙模板"}],
+      "code_refs": [{"path": "openspec/changes/product-foundation-v1/execution.yaml", "symbol": "G2"}],
+      "risks": ["截图通过不能自动写入 G2，必须有项目负责人明确批准"]
+    },
+    "2.3": {
+      "summary": "实现经批准的视觉令牌",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/product-experience/spec.md", "heading": "### Requirement: 核心界面必须覆盖完整状态并可访问"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 5. 晨昏视觉使用信息令牌，不延续紫色宇宙模板"}],
+      "code_refs": [{"path": "lib/app/theme.dart", "symbol": "buildDailyAskingTheme"}, {"path": "lib/shared/widgets/cosmic_scaffold.dart", "symbol": "CosmicScaffold"}],
+      "risks": ["必须先通过 G2；主题不得破坏亮暗模式与无障碍"]
+    },
+    "2.4": {
+      "summary": "实现稳定主壳和页面结构",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/product-experience/spec.md", "heading": "### Requirement: 主导航必须稳定且符合任务心智"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 2. 四目的地信息架构，证据页吸收记录池"}],
+      "code_refs": [{"path": "lib/app/router.dart", "symbol": "appRouter"}, {"path": "lib/app/shell_page.dart", "symbol": "ShellPage"}],
+      "risks": ["切换页面不得丢失草稿、筛选和来源选择"]
+    },
+    "2.5": {
+      "summary": "验证视觉分支",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/evidence-map/spec.md", "heading": "### Requirement: 晨昏视觉必须服务可读性"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "verification_profiles"}],
+      "risks": ["静态检查不能替代真实视口截图验收"]
+    },
+    "3.1": {
+      "summary": "固定数据库依赖并创建版本化结构",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 本地数据必须使用版本化结构"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 6. 使用 Drift / SQLite 和失败安全迁移"}],
+      "code_refs": [{"path": "pubspec.yaml", "symbol": "dependencies"}],
+      "risks": ["依赖版本必须基于实现时官方兼容信息，不使用记忆猜测"]
+    },
+    "3.2": {
+      "summary": "实现 Drift 仓库与关系事务",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 关联写入必须保持一致"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 6. 使用 Drift / SQLite 和失败安全迁移"}],
+      "code_refs": [{"path": "lib/features/journal/data/entry_repository.dart", "symbol": "EntryRepository"}],
+      "risks": ["来源删除必须硬删除正文，只保留无正文 tombstone"]
+    },
+    "3.3": {
+      "summary": "实现旧记录幂等迁移与失败回滚",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 旧记录迁移必须幂等且不覆盖原载荷"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 6. 使用 Drift / SQLite 和失败安全迁移"}],
+      "code_refs": [{"path": "lib/features/journal/data/entry_repository.dart", "symbol": "storageKey"}],
+      "risks": ["迁移完成标记只能在数量和字段核对后提交"]
+    },
+    "3.4": {
+      "summary": "切换记录控制器与导出到新仓库",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 导出必须保持兼容和敏感信息隔离"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 模块边界"}],
+      "code_refs": [{"path": "lib/features/journal/application/journal_controller.dart", "symbol": "JournalController"}, {"path": "lib/features/journal/application/journal_exporter.dart", "symbol": "JournalExporter"}],
+      "risks": ["现有 CRUD、排序、搜索和导出语义不得回归"]
+    },
+    "3.5": {
+      "summary": "新增迁移高风险测试",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 旧记录迁移必须幂等且不覆盖原载荷"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": "test/features/journal/entry_repository_test.dart", "symbol": "main"}],
+      "risks": ["最多两组测试必须覆盖重复执行和事务失败两条关键路径"]
+    },
+    "3.6": {
+      "summary": "验证本地数据分支",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/local-evidence-store/spec.md", "heading": "### Requirement: 损坏和不可用状态不得静默重置"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Migration Plan"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "verification_profiles"}],
+      "risks": ["必须使用真实旧 JSON 样本执行升级验收"]
+    },
+    "4.1": {
+      "summary": "实现确定性本地追问规则",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/daily-evidence-loop/spec.md", "heading": "### Requirement: 每次保存最多提出一个本地问题"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 3. 快速记录与详细编辑分离"}],
+      "code_refs": [{"path": "lib/features/journal/domain/entry.dart", "symbol": "Entry"}],
+      "risks": ["规则必须版本化、确定且不调用网络"]
+    },
+    "4.2": {
+      "summary": "实现快速记录与草稿恢复用例",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/daily-evidence-loop/spec.md", "heading": "### Requirement: 追问不得阻塞原始记录"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 今日"}],
+      "code_refs": [{"path": "lib/features/journal/application/journal_controller.dart", "symbol": "JournalController"}],
+      "risks": ["数据库失败时不得清空用户输入或展示成功"]
+    },
+    "4.3": {
+      "summary": "接入今日快速记录和单题反馈",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/daily-evidence-loop/spec.md", "heading": "### Requirement: 重复记录路径必须保持短小"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 3. 快速记录与详细编辑分离"}],
+      "code_refs": [{"path": "lib/features/journal/presentation/today_page.dart", "symbol": "TodayPage"}],
+      "risks": ["详细字段必须保留可选入口，不能从产品中丢失"]
+    },
+    "4.4": {
+      "summary": "实现证据图谱投影和来源交互",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/evidence-map/spec.md", "heading": "### Requirement: 图谱必须解释积累而非只做装饰"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 4. 证据图谱采用派生投影而非图数据库"}],
+      "code_refs": [{"path": "lib/features/journal/presentation/timeline_page.dart", "symbol": "TimelinePage"}],
+      "risks": ["所有统计必须可回到真实来源，不能使用模拟成长数据"]
+    },
+    "4.5": {
+      "summary": "实现可撤销本地提醒",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/daily-evidence-loop/spec.md", "heading": "### Requirement: 每日提醒必须本地、可选且可撤销"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Security, Logging, Errors, Observability"}],
+      "code_refs": [{"path": "lib/features/settings/presentation/settings_page.dart", "symbol": "SettingsPage"}],
+      "risks": ["权限拒绝不得阻断记录或重复强制请求"]
+    },
+    "4.6": {
+      "summary": "验证本地追问和 30 秒闭环",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/daily-evidence-loop/spec.md", "heading": "### Requirement: 保存结果必须立即反馈"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": "test/widget_test.dart", "symbol": "main"}],
+      "risks": ["30 秒是固定脚本目标，不能伪装成已验证线上指标"]
+    },
+    "4.7": {
+      "summary": "验证每日证据闭环分支",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/product-experience/spec.md", "heading": "### Requirement: 留存反馈不得惩罚漏记"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "verification_profiles"}],
+      "risks": ["必须核对漏记日不会清零或降低历史证据"]
+    },
+    "5.1": {
+      "summary": "实现产物仓库和来源关联",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: AI 产物必须保留来源关系"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 7. AI 工作室采用结构化草稿生命周期"}],
+      "code_refs": [{"path": "lib/features/artifacts/domain/artifact.dart", "symbol": "Artifact"}],
+      "risks": ["来源删除后不得保留已删除正文或伪造来源"]
+    },
+    "5.2": {
+      "summary": "实现结构化产物草稿生命周期",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: 工作室必须区分内容、缺口与风险"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 7. AI 工作室采用结构化草稿生命周期"}],
+      "code_refs": [{"path": "lib/features/artifacts/application/artifact_generator.dart", "symbol": "ArtifactGenerator"}],
+      "risks": ["非法 JSON 和无依据数字必须在保存前失败"]
+    },
+    "5.3": {
+      "summary": "实现可审阅编辑保存的证据工作室",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: AI 产物必须可审阅、编辑和显式保存"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 工作室"}],
+      "code_refs": [{"path": "lib/features/artifacts/presentation/artifacts_page.dart", "symbol": "ArtifactsPage"}],
+      "risks": ["未保存响应不得出现在已保存产物列表"]
+    },
+    "5.4": {
+      "summary": "区分直连与网关模式及可操作错误",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: 直连与网关模式必须可辨识"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 8. 直连与可选网关共用窄客户端契约"}],
+      "code_refs": [{"path": "lib/core/llm/openai_compatible_client.dart", "symbol": "OpenAiCompatibleClient"}, {"path": "lib/core/security/ai_disclosure_policy.dart", "symbol": "AiDisclosurePolicy"}],
+      "risks": ["模式切换不得绕过每次出站披露"]
+    },
+    "5.5": {
+      "summary": "新增 AI 保存边界高风险测试",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: AI 产物必须可审阅、编辑和显式保存"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": "test/features/artifacts/artifact_generator_test.dart", "symbol": "main"}],
+      "risks": ["只新增最高风险测试，不删除现有事实边界回归"]
+    },
+    "5.6": {
+      "summary": "验证 AI 证据工作室分支",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/ai-generation/spec.md", "heading": "### Requirement: AI 产物必须保留来源关系"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Security, Logging, Errors, Observability"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "verification_profiles"}],
+      "risks": ["真实模型验收必须使用用户自有凭据且不得记录值"]
+    },
+    "6.1": {
+      "summary": "建立 Worker 工具链和配置契约",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关必须验证访问凭据和请求边界"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 8. 直连与可选网关共用窄客户端契约"}],
+      "code_refs": [{"path": "gateway/wrangler.toml", "symbol": "vars"}],
+      "risks": ["Rate Limiting binding 与依赖版本必须查询 Cloudflare 官方文档"]
+    },
+    "6.2": {
+      "summary": "实现网关鉴权、校验和健康状态",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关必须验证访问凭据和请求边界"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## API Contract"}],
+      "code_refs": [{"path": "gateway/src/index.ts", "symbol": "fetch"}],
+      "risks": ["所有前置校验失败都必须证明没有上游外呼"]
+    },
+    "6.3": {
+      "summary": "实现网关转发、超时、限流和脱敏错误",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关失败必须限时、限流且可诊断"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 8. 直连与可选网关共用窄客户端契约"}],
+      "code_refs": [{"path": "gateway/src/index.ts", "symbol": "fetch"}],
+      "risks": ["生成请求不自动重试，日志不得含正文、token 或上游错误正文"]
+    },
+    "6.4": {
+      "summary": "接入 Flutter 网关模式",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关必须默认关闭并由用户显式选择"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 8. 直连与可选网关共用窄客户端契约"}],
+      "code_refs": [{"path": "lib/core/llm/ai_provider_config.dart", "symbol": "AiProviderConfig"}, {"path": "lib/features/settings/presentation/settings_page.dart", "symbol": "SettingsPage"}],
+      "risks": ["默认模式必须继续是 BYOK 直连"]
+    },
+    "6.5": {
+      "summary": "新增网关安全契约测试",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关日志不得保存用户正文或密钥"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": "gateway/src/index.ts", "symbol": "fetch"}],
+      "risks": ["测试输出和快照本身不得包含测试 token 或用户正文"]
+    },
+    "6.6": {
+      "summary": "验证可选网关分支",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/optional-ai-gateway/spec.md", "heading": "### Requirement: 网关必须提供受限的兼容生成接口"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Security, Logging, Errors, Observability"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "verification_profiles"}],
+      "risks": ["未配置 Worker 必须明确降级，不能继续返回无解释的固定 501"]
+    },
+    "7.1": {
+      "summary": "新增 MIT 与开源治理文档",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 开源发布必须包含 MIT 与专业项目说明"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": "README.md", "symbol": "Daily Asking"}],
+      "risks": ["所有完成度、截图和验证声明必须有真实证据"]
+    },
+    "7.2": {
+      "summary": "用真实产品证据重构 README",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 开源发布必须包含 MIT 与专业项目说明"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": "README.md", "symbol": "核心闭环"}],
+      "risks": ["概念图和占位图不得冒充真实应用截图"]
+    },
+    "7.3": {
+      "summary": "实现仓库外正式签名和发布工作流",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: Beta 与正式 V1 必须区分签名和声明"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": "android/app/build.gradle.kts", "symbol": "buildTypes"}, {"path": ".github/workflows/flutter-ci.yml", "symbol": "android-release-build"}],
+      "risks": ["PR 构建与正式签名构建必须明确区分，日志不得打印 secret"]
+    },
+    "7.4": {
+      "summary": "升级 GitHub Actions Node 24 运行时",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 每个大功能必须独立交付验证证据"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": ".github/workflows/flutter-ci.yml", "symbol": "jobs"}],
+      "risks": ["版本必须以实现时 actions 官方发行信息为准"]
+    },
+    "7.5": {
+      "summary": "生成 Beta 候选验证证据",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 每个大功能必须独立交付验证证据"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Testing and Acceptance"}],
+      "code_refs": [{"path": ".sdd/project.yaml", "symbol": "release"}],
+      "risks": ["构建成功不等于安装、升级、隐私和视觉验收通过"]
+    },
+    "7.6": {
+      "summary": "取得 G3 并发布 v0.2.0-beta",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 发布必须经过分阶段人工门禁"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": "openspec/changes/product-foundation-v1/execution.yaml", "symbol": "G3"}],
+      "risks": ["未获明确 G3 批准不得创建 GitHub 预发布"]
+    },
+    "7.7": {
+      "summary": "完成五个工作日自用验收",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/product-experience/spec.md", "heading": "### Requirement: 留存反馈不得惩罚漏记"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Migration Plan"}],
+      "code_refs": [{"path": "openspec/changes/product-foundation-v1/tasks.md", "symbol": "7.7"}],
+      "risks": ["必须记录真实使用结果，不能用目标指标替代证据"]
+    },
+    "7.8": {
+      "summary": "构建并发布正式签名 v1.0.0",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: Beta 与正式 V1 必须区分签名和声明"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "### 9. 发布分为 Beta 验收与正式签名"}],
+      "code_refs": [{"path": "android/app/build.gradle.kts", "symbol": "signingConfigs"}],
+      "risks": ["正式发布是外部写操作，必须由项目负责人最终确认"]
+    },
+    "8.1": {
+      "summary": "同步 V1 长期规格",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 发布必须经过分阶段人工门禁"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Migration Plan"}],
+      "code_refs": [{"path": "openspec/specs", "symbol": "V1 长期规格"}],
+      "risks": ["未实现或未验收行为不得提前同步为已发布声明"]
+    },
+    "8.2": {
+      "summary": "归档 V1 产品史诗",
+      "requirements": [{"path": "openspec/changes/product-foundation-v1/specs/release-readiness/spec.md", "heading": "### Requirement: 发布必须经过分阶段人工门禁"}],
+      "design": [{"path": "openspec/changes/product-foundation-v1/design.md", "heading": "## Rollback Strategy"}],
+      "code_refs": [{"path": "openspec/changes/product-foundation-v1/tasks.md", "symbol": "全部任务"}],
+      "risks": ["G2、G3、V1 Release 或任一任务缺失时不得归档"]
+    }
+  }
+}
