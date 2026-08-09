@@ -86,6 +86,7 @@ openspec list
 
 - 项目约束：`openspec/config.yaml`
 - 长期需求规格：`openspec/specs/**/spec.md`
+- V1 活动 PRD：`openspec/changes/product-foundation-v1/proposal.md`（目标版本，G1 通过前不进入业务实现）
 - v0.1 归档变更：`openspec/changes/archive/2026-08-09-production-v1-prd/`
 - 新变更目录：`openspec/changes/<change-name>/`
 
