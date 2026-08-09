@@ -19,6 +19,9 @@ android/local.properties
 .vscode/
 *.iml
 
+# Agent SDD 临时日志与上下文
+.sdd/cache/
+
 # OS
 .DS_Store
 Thumbs.db

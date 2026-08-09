@@ -8,18 +8,29 @@ Daily Asking 是本地优先的 Flutter Android APK，用于记录真实工作�
 
 ## 默认工作流
 
-1. 先探索现状，再下结论；能通过代码、配置、OpenSpec 文档确认的，不要靠猜。
-2. 非平凡业务变更必须先更新或读取对应 OpenSpec 变更，再改代码。
-3. 优先做最小可验证改动，避免无关重构。
-4. 每完成一个原子任务，运行匹配验证；若本机缺少 Flutter/Dart 环境，明确记录未验证项。
-5. 最终汇报必须说明：做了什么、验证了什么、还有什么风险或未验证项。
-6. 项目文档正文必须使用中文；命令、路径、配置键、API 名、包名和 OpenSpec 语法关键字可保留原文。
+1. 大功能先完成人工产品发现，明确主用户、核心问题、价值、非目标和成功指标；G0 未批准时不创建实现型规格。
+2. 先探索现状，再下结论；能通过代码、配置、OpenSpec 文档确认的，不要靠猜。
+3. 非平凡业务变更必须先更新或读取对应 OpenSpec 变更，再改代码。
+4. 一次只实施一个原子任务，先用 `execution.yaml` 生成最小上下文，不加载无关规格、日志或历史 sessions。
+5. 优先做最小可验证改动，避免无关重构。
+6. 每完成一个原子任务，运行匹配验证；若本机缺少 Flutter/Dart 环境，明确记录未验证项。
+7. 最终汇报必须说明：做了什么、验证了什么、还有什么风险或未验证项。
+8. 项目文档正文必须使用中文；命令、路径、配置键、API 名、包名和 OpenSpec 语法关键字可保留原文。
+
+## Agent SDD
+
+- 公共协议快照：`docs/sdd/AGENT_PROTOCOL.md`。
+- 项目配置：`.sdd/project.yaml`。
+- 使用说明：`docs/sdd/README.md`。
+- 复杂 feature/refactor 的 change 必须包含 `execution.yaml` 和 G0-G3 状态。
+- Agent 不得自行批准人工门禁；自动测试通过不等于产品、视觉或发布验收通过。
 
 ## OpenSpec 约束
 
 - v0.1 生产规格基线已归档到 `openspec/changes/archive/2026-08-09-production-v1-prd/`。
 - 长期需求真相源在 `openspec/specs/**/spec.md`。
 - 新的非平凡业务变更必须创建独立 `openspec/changes/<change>/`，不得继续修改已归档基线。
+- 复杂 feature/refactor 必须在 change 下增加 `execution.yaml`，显式映射 task 到规格、设计、代码入口和验证项。
 - 项目级约束在 `openspec/config.yaml`。
 - 变更需求在 `openspec/changes/<change>/proposal.md` 和 `specs/**/spec.md`。
 - 技术方案在 `openspec/changes/<change>/design.md`。

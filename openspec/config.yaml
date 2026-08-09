@@ -3,6 +3,7 @@ schema: spec-driven
 context: |
   本项目是 Daily Asking：本地优先的 Flutter Android APK，帮助实习生/求职者记录真实工作经历，通过 AI 追问补足事实，再生成简历要点、周报和面试追问卡。
   本项目遵循“全栈项目 AI-Coding 五层 SDD 架构”。
+  大功能在 Specify 前必须完成人工产品发现门禁，明确唯一主用户、核心问题、价值承诺、非目标和成功指标。
   规格先于业务代码；需求与方案分离；代码、测试、迁移脚本和构建结果是验证证据，不能替代规格。
   默认域：api、data、backend、frontend、testing、operations。
   当前发布目标为 Android APK GitHub Release；AI 主路径为 BYOK 兼容 OpenAI 接口直连；用户记录本地结构化持久化；不做云同步账号体系。
@@ -14,6 +15,7 @@ context: |
 rules:
   proposal:
     - 必须包含原因、范围、非目标、成功标准和变更类型。
+    - 大功能必须引用已获人工批准的产品发现证据。
     - 必须标明单机全栈、分布式全栈或混合模式。
     - 必须列出受影响域：api、data、backend、frontend、testing、operations。
   specs:
@@ -29,6 +31,7 @@ rules:
     - 每个任务必须可独立验证。
     - 全栈链路按 api/data/backend/frontend/testing/operations 拆分。
     - 禁止使用“完善”“优化”“处理一下”等不可验收表述。
+    - 复杂功能或重构的 change 必须提供 execution.yaml，把 task 映射到规格、设计和代码入口。
 
 operations:
   apply:
