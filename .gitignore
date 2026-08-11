@@ -1,27 +1,46 @@
-# Flutter/Android
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
-android/.gradle/
+# ===== 敏感与本地配置（绝不提交）=====
+/android/local.properties
 android/local.properties
-
-# Secrets
-*.keystore
+key.properties
 *.jks
-.env
-.env.*
-!.env.example
+*.keystore
+*.p12
+android/app/key.properties
 
-# IDE
+# ===== 构建产物 =====
+/build/
+/dist/
+/app-release.apk
+*.apk
+*.aab
+*.symbols
+*.map.json
+
+# ===== 本地分析/编辑器输出 =====
+analyze_out.txt
+*.iml
 .idea/
 .vscode/
-*.iml
+*.log
 
-# Agent SDD 临时日志与上下文
-.sdd/cache/
-
-# OS
+# ===== Miscellaneous =====
+*.class
+*.pyc
+*.swp
 .DS_Store
-Thumbs.db
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# ===== Flutter/Dart/Pub =====
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/coverage/

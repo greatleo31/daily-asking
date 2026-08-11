@@ -1,45 +1,63 @@
-# 安全策略
+# 安全政策（Security Policy）
 
-## 支持范围
+## 支持的版本（Supported Versions）
 
-Daily Asking v0.1 的安全边界聚焦本地 Android APK、BYOK 模型配置、本地记录、导出包和 GitHub Release 资产。
+| 版本 | 支持状态 |
+| --- | --- |
+| main 分支（最新） | ✅ 支持 |
+| 旧版本 | ❌ 不支持，请升级到最新版 |
 
-当前不包含云账号、云同步、托管模型网关或后台管理系统。
+## 报告安全漏洞（Reporting a Vulnerability）
 
-## 密钥处理规则
+请**不要**在公开 Issue 中提交安全漏洞。
 
-- 不要提交 API Key、访问令牌、密码、签名 keystore、签名密码或第三方服务凭据。
-- API Key 只能写入系统安全存储。
-- API Key 不得进入本地记录、AI 产物、日志、导出包、迁移包、测试快照或发布说明。
-- 清除 AI 配置必须删除系统安全存储中的 Key。
-- 示例配置只能使用占位值，例如 `sk-...` 或 `your-model-name`。
+请通过以下方式私下报告：
 
-## AI 数据边界
+- 在 GitHub 仓库创建 **Private vulnerability report**（仓库主页 → Security → Report a vulnerability）
+- 或发送邮件至维护者（见仓库主页联系方式）
 
-- 真实 AI 请求前必须展示服务商、模型、调用路径和将发送的字段范围。
-- 默认不得上传整个记录池。
-- 只允许发送当前用户选择任务所需的记录片段和对应提示词。
-- AI 输出不得编造数字、公司名、项目名、职责范围或影响。
+我们会在收到报告后尽快确认，通常会：
 
-## 漏洞报告
+1. 72 小时内确认并回复
+2. 评估影响范围与严重程度
+3. 修复后发布公告，并在致谢中列出报告者（如你愿意署名）
 
-请不要在公开 issue 中粘贴 API Key、访问令牌、日志原文、完整提示词、个人经历原文或可识别隐私数据。
+## 本项目的安全承诺
 
-优先使用 GitHub Security Advisory 私下报告。若仓库未启用 Security Advisory，请创建一个不含敏感细节的 issue，说明影响范围和复现类别，再由维护者约定私下沟通方式。
+- **本地优先**：所有记录默认保存在本机，无账号、无登录、无云同步、无遥测。
+- **API Key 隔离**：BYOK 的 API Key 只保存在本机隔离存储，页面不回显，日志不记录。
+- **出站披露**：真实 AI 调用前必须展示出站披露，确认后才发送，且只发送选中的最小字段。
+- **最小权限**：应用仅申请运行所需的最小权限（如网络权限，仅当使用 AI 时）。
 
-报告建议包含：
+---
 
-- 受影响版本或提交
-- 影响范围
-- 最小复现步骤
-- 是否涉及密钥、日志、导出包或 AI 出站数据
-- 你已经做过的验证
+# Security Policy
 
-## 发布安全检查清单
+## Supported Versions
 
-发布 GitHub Release 前必须确认：
+| Version | Supported |
+| --- | --- |
+| main branch (latest) | ✅ Yes |
+| Older releases | ❌ No — please upgrade |
 
-- 仓库搜索未发现真实 API Key、访问令牌、密码或签名凭据。
-- README 和发布说明明确 BYOK、本地优先、最小出站和已知限制。
-- APK 签名姿态已说明；调试签名只能标记为 GitHub 预览发布。
-- `flutter analyze`、`flutter test` 和 Android 发布构建的结果已记录。
+## Reporting a Vulnerability
+
+Please **do not** report security issues in public issues.
+
+Report privately instead:
+
+- Create a **Private vulnerability report** on the GitHub repository (repo home → Security → Report a vulnerability)
+- Or email the maintainer (see contact info on the repo home page)
+
+We will confirm as soon as possible, usually:
+
+1. Acknowledge and reply within 72 hours
+2. Assess scope and severity
+3. Fix and publish an advisory, crediting the reporter (if you want to be credited)
+
+## Security commitments
+
+- **Local-first**: all records stay on your device. No accounts, no cloud sync, no telemetry.
+- **API key isolation**: BYOK keys are stored only in isolated local storage, never echoed in the UI or logged.
+- **Outbound disclosure**: real AI calls require an outbound disclosure and confirmation before sending, and only send the minimal fields you selected.
+- **Least privilege**: the app requests only the permissions it needs (e.g. network, only when using AI).
