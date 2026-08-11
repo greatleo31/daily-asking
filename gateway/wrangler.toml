@@ -1,6 +1,0 @@
-name = "daily-asking-gateway"
-main = "src/index.ts"
-compatibility_date = "2026-08-01"
-
-[vars]
-# Provider API keys must be configured as encrypted secrets, not committed here.
