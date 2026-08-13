@@ -70,7 +70,6 @@ class ArtifactService {
       }
       b.write('\n');
     }
-    b.write('说明：仅据已有记录整理，缺失项请核对后补充。');
     return b.toString();
   }
 

@@ -69,11 +69,7 @@ class _EvidencePageState extends State<EvidencePage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text('证据',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('${state.allEntries.length} 条本地记录 · 纯本地，不出设备',
+          Text('共 ${state.allEntries.length} 条',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
           const SizedBox(height: 16),

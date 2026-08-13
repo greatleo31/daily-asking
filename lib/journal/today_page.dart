@@ -67,38 +67,10 @@ class _TodayPageState extends State<TodayPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('今日',
-                        style: theme.textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateTime.now().cnLabel,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.secondary),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '本地 · 无账号',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.secondary),
-                ),
-              ),
-            ],
+          Text(
+            DateTime.now().cnLabel,
+            style: theme.textTheme.titleMedium
+                ?.copyWith(color: theme.colorScheme.secondary),
           ),
           const SizedBox(height: 24),
           // 快速记录输入区。
@@ -116,10 +88,6 @@ class _TodayPageState extends State<TodayPage> {
                 Text('今天发生了什么真实小事？',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text('30 秒记一句事实，保存后我会追问一个最值得补充的点。',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.secondary)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _controller,

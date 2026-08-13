@@ -21,17 +21,9 @@ class EvidenceGraph extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text('证据图谱',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Text('仅记录频率，不设惩罚',
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.secondary)),
-              ],
-            ),
+            Text('证据图谱',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             _FreqStrip(recent: metrics.recentFreqByDay),
             const SizedBox(height: 16),
@@ -141,7 +133,7 @@ class _FreqStrip extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text('近 14 天记录频率（安静累积，不设断签惩罚）',
+        Text('近 14 天记录频率',
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: theme.colorScheme.secondary)),
       ],

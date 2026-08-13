@@ -1,4 +1,4 @@
-/// 设置：本地优先与隐私边界 + 可选 BYOK AI 配置 + 主题切换。
+/// 设置：供应商 AI 配置入口 + 关于入口。分组可折叠，右上角有全局主题切换。
 ///
 /// API Key 不回显、不写普通数据库；提供清除配置按钮。
 library;
@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import 'about_page.dart';
 import 'settings_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -25,120 +26,96 @@ class _SettingsPageState extends State<SettingsPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text('设置',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          _PrivacyCard(),
-          const SizedBox(height: 16),
-          Text('外观',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
+          // 供应商配置组（可折叠）。
           Card(
-            child: RadioGroup<ThemeModePreference>(
-              groupValue: _theme,
-              onChanged: (v) => _setTheme(v, state),
-              child: Column(
-                children: [
-                  RadioListTile<ThemeModePreference>(
-                    title: const Text('跟随系统'),
-                    value: ThemeModePreference.system,
-                  ),
-                  RadioListTile<ThemeModePreference>(
-                    title: const Text('亮色'),
-                    value: ThemeModePreference.light,
-                  ),
-                  RadioListTile<ThemeModePreference>(
-                    title: const Text('深色'),
-                    value: ThemeModePreference.dark,
-                  ),
-                ],
+            child: ExpansionTile(
+              leading: Icon(Icons.auto_awesome,
+                  color: theme.colorScheme.secondary),
+              title: const Text('供应商配置'),
+              subtitle: Text(
+                state.aiReady
+                    ? '已配置 · ${state.llmSettings.provider}'
+                    : '未配置',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.secondary),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('可选 AI（BYOK）',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.auto_awesome,
-                          color: theme.colorScheme.secondary),
-                      const SizedBox(width: 8),
-                      Text(
-                        state.aiReady ? '已配置' : '未配置',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                            color: state.aiReady
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outline),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => _configureAi(context),
-                        child: Text(state.aiReady ? '修改' : '配置'),
-                      ),
-                    ],
-                  ),
+              initiallyExpanded: true,
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 18,
+                      color: state.aiReady
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      state.aiReady ? '已配置' : '未配置',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: state.aiReady
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outline),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => _configureAi(context),
+                      child: Text(state.aiReady ? '修改' : '配置'),
+                    ),
+                  ],
+                ),
+                if (state.aiReady) ...[
                   const SizedBox(height: 8),
                   Text(
-                    state.aiReady
-                        ? '服务商：${state.llmSettings.provider} · '
-                            '模型：${state.llmSettings.model}'
-                        : '可选择 OpenAI 兼容服务，用于把证据整理成简历/周报/面试卡。',
+                    '服务商：${state.llmSettings.provider} · 模型：${state.llmSettings.model}',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.secondary),
                   ),
-                  if (state.aiReady) ...[
-                    const SizedBox(height: 8),
-                    Text('API Key：已保存（不显示）',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.secondary)),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _clearAi,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('清除 AI 配置'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFB8452F),
-                      ),
+                  const SizedBox(height: 4),
+                  Text('API Key：已保存（不显示）',
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.secondary)),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _clearAi,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('清除 AI 配置'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFB8452F),
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Text('关于',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
+          // 关于组（可折叠）。
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.fingerprint),
-              title: const Text('晨昏证据图谱'),
-              subtitle: const Text('本地优先职场证据成长助手 · v1.0.0'),
+            child: ExpansionTile(
+              leading:
+                  Icon(Icons.info_outline, color: theme.colorScheme.secondary),
+              title: const Text('关于'),
+              subtitle: const Text('版本 v1.0.0 · 晨昏证据图谱'),
+              initiallyExpanded: true,
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.fingerprint),
+                  title: const Text('关于晨昏证据图谱'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutPage()),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
-  }
-
-  ThemeModePreference get _theme {
-    return context.watch<AppState>().theme;
-  }
-
-  Future<void> _setTheme(ThemeModePreference? v, AppState state) async {
-    if (v == null) return;
-    await state.setTheme(v);
   }
 
   Future<void> _configureAi(BuildContext context) async {
@@ -157,54 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-class _PrivacyCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.lock_outline, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('本地优先 · 隐私边界',
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _privacyRow(theme, '所有记录默认保存在本机，不出设备。'),
-            _privacyRow(theme, '无账号、无登录、无订阅、无云同步、无遥测。'),
-            _privacyRow(theme, '真实 AI 调用只发送你选中的最小字段，且出站前确认。'),
-            _privacyRow(theme, '日志不记录 API Key、记录正文与提示词全文。'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _privacyRow(ThemeData theme, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.check, size: 16, color: theme.colorScheme.secondary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(text, style: theme.textTheme.bodySmall),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// AI 配置页。API Key 输入不回显（obscure），保存后仅存隔离存储。
+/// 供应商 AI 配置页。API Key 输入不回显（obscure），保存后仅存隔离存储。
 class AiConfigPage extends StatefulWidget {
   const AiConfigPage({super.key});
 
@@ -255,9 +185,8 @@ class _AiConfigPageState extends State<AiConfigPage> {
       model: _model.text.trim(),
       enabled: true,
     );
-    final key = _apiKey.text.trim().isEmpty
-        ? null
-        : _apiKey.text.trim();
+    final key =
+        _apiKey.text.trim().isEmpty ? null : _apiKey.text.trim();
     await state.settings.writeLlmSettings(settings, apiKey: key);
     await state.reload();
     if (!mounted) return;
@@ -272,7 +201,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 配置'),
+        title: const Text('供应商配置'),
         actions: [
           TextButton(onPressed: _busy ? null : _save, child: const Text('保存')),
         ],
@@ -280,7 +209,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('仅用于把选中的证据整理成产物。API Key 只保存在本机隔离存储，页面不回显。',
+          Text('仅用于把选中的证据整理成简历 / 周报 / 面试卡。Key 只保存在本机，页面不回显。',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
           const SizedBox(height: 16),

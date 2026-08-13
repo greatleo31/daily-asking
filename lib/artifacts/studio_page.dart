@@ -135,10 +135,6 @@ class _StudioPageState extends State<StudioPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text('工作室',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
           Text('选择证据，生成简历要点 / 周报 / 面试追问卡',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
@@ -242,8 +238,8 @@ class _AiToggle extends StatelessWidget {
       child: SwitchListTile(
         value: aiMode,
         onChanged: onChanged,
-        title: const Text('使用 AI 生成（可选 · BYOK）'),
-        subtitle: const Text('需在「设置」中配置 AI。出站前会先展示披露确认。'),
+        title: const Text('使用 AI 生成'),
+        subtitle: const Text('需先在「设置」中配置供应商。出站前会先展示披露确认。'),
         secondary: Icon(Icons.auto_awesome,
             color: theme.colorScheme.secondary),
       ),

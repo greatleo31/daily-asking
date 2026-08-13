@@ -84,6 +84,7 @@ class _QuestionCardState extends State<QuestionCard> {
             controller: _controller,
             maxLines: 3,
             decoration: const InputDecoration(hintText: '补充你的回答…'),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           Row(
