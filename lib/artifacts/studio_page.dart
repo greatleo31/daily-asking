@@ -1,7 +1,7 @@
-/// 工作室：选择一条或多条证据，生成简历要点 / 周报 / 面试追问卡。
+/// 工作室：搜索并选择证据，默认用 AI 生成简历要点 / 周报 / 面试追问卡。
 ///
-/// - 无 AI 时用本地模板生成。
-/// - 有 AI 配置时，出站前必须展示披露（服务商/模型/路径/字段范围）。
+/// - AI 未配置时，点生成会强制引导先配置供应商（不可跳过）。
+/// - 已配置时出站前必须展示披露（服务商/模型/路径/字段范围）。
 /// - 生成结果标注：已有事实、缺失证据、风险提示。
 library;
 
@@ -12,6 +12,7 @@ import '../../app/app_state.dart';
 import '../../core/llm/llm_client.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
+import '../../settings/settings_page.dart';
 import '../../settings/settings_repository.dart';
 import 'artifact_view_page.dart';
 
@@ -24,70 +25,122 @@ class StudioPage extends StatefulWidget {
 
 class _StudioPageState extends State<StudioPage> {
   final Map<String, bool> _selected = {};
-  bool _aiMode = false;
+  final _search = TextEditingController();
+  String _query = '';
   bool _busy = false;
 
-  List<Entry> get _chosen {
-    final state = context.read<AppState>();
-    return state.allEntries.where((e) => _selected[e.id] == true).toList();
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<Entry> _chosen(AppState state) =>
+      state.allEntries.where((e) => _selected[e.id] == true).toList();
+
+  /// 搜索过滤后的可见证据列表（作用于任务/背景/行动/结果/难点/标签）。
+  List<Entry> _visible(AppState state) {
+    final all = state.allEntries;
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return all;
+    return all
+        .where((e) =>
+            '${e.task} ${e.context} ${e.action} ${e.result} ${e.blocker} '
+                    '${e.tags.join()}'
+                .toLowerCase()
+                .contains(q))
+        .toList();
+  }
+
+  bool _allVisibleSelected(AppState state) {
+    final vis = _visible(state);
+    return vis.isNotEmpty && vis.every((e) => _selected[e.id] == true);
+  }
+
+  /// 全选 / 全不选当前搜索过滤后的结果。
+  void _toggleSelectAll(AppState state) {
+    final vis = _visible(state);
+    final select = !_allVisibleSelected(state);
+    setState(() {
+      for (final e in vis) {
+        _selected[e.id] = select;
+      }
+    });
   }
 
   Future<void> _generate(ArtifactType type) async {
     final state = context.read<AppState>();
-    final chosen = _chosen;
+    final chosen = _chosen(state);
     if (chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('请先选择至少一条证据')));
       return;
     }
 
-    final settings = await state.settings.readLlmSettings();
-    final hasKey = await state.settings.hasApiKey();
-    final useAi = _aiMode && settings.isConfigured && hasKey;
-
-    if (useAi) {
-      final apiKey = await _readApiKey();
-      if (!mounted) return;
-      final payload = OutboundPayload(entries: chosen, artifactType: type);
-      final ok = await _confirmDisclosureAndKey(context, payload, settings);
-      if (ok != true) return;
-      setState(() => _busy = true);
-      final client = OpenAiClient();
-      final result = await client.complete(
-        settings: settings,
-        apiKey: apiKey!,
-        system: payload.buildSystemPrompt(type),
-        user: payload.buildUserMessage(),
+    // 需求3 强制配置门：未配置时不可生成，只能去配置供应商。
+    if (!state.aiReady) {
+      final go = await _showConfigureGuard(context);
+      if (go != true || !mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AiConfigPage()),
       );
-      setState(() => _busy = false);
-      if (!mounted) return;
-      if (result.isError) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(result.error!)));
-        return;
-      }
-      final artifact = Artifact(
-        id: genId(prefix: 'a_'),
-        type: type,
-        content: result.content,
-        sourceEntryIds: chosen.map((e) => e.id).toList(),
-        risks: const ['AI 生成内容未经人工核对，请逐条验证。'],
-        gaps: const ['AI 生成内容不保证覆盖全部缺失证据，请自行核对。'],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      await state.artifactRepo.save(artifact);
-      await state.reload();
-      if (!mounted) return;
-      await _open(artifact.id);
       return;
     }
 
-    // 本地模板生成。
-    final artifact =
-        await state.generateLocalArtifact(type: type, sourceEntries: chosen);
+    final settings = await state.settings.readLlmSettings();
+    final apiKey = await _readApiKey();
+    if (!mounted) return;
+    final payload = OutboundPayload(entries: chosen, artifactType: type);
+    final ok = await _confirmDisclosureAndKey(context, payload, settings);
+    if (ok != true) return;
+    setState(() => _busy = true);
+    final client = OpenAiClient();
+    final result = await client.complete(
+      settings: settings,
+      apiKey: apiKey!,
+      system: payload.buildSystemPrompt(type),
+      user: payload.buildUserMessage(),
+    );
+    setState(() => _busy = false);
+    if (!mounted) return;
+    if (result.isError) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(result.error!)));
+      return;
+    }
+    final artifact = Artifact(
+      id: genId(prefix: 'a_'),
+      type: type,
+      content: result.content,
+      sourceEntryIds: chosen.map((e) => e.id).toList(),
+      risks: const ['AI 生成内容未经人工核对，请逐条验证。'],
+      gaps: const ['AI 生成内容不保证覆盖全部缺失证据，请自行核对。'],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await state.artifactRepo.save(artifact);
+    await state.reload();
     if (!mounted) return;
     await _open(artifact.id);
+  }
+
+  /// 未配置 AI 时的强制引导（不可跳过：无取消按钮）。
+  Future<bool?> _showConfigureGuard(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('需要先配置 AI 供应商'),
+        content: const Text(
+            '生成产物需要调用 AI，请先配置一个 OpenAI 兼容供应商'
+            '（服务商 / Base URL / 模型 / API Key）。'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('去配置'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<String?> _readApiKey() async {
@@ -131,6 +184,7 @@ class _StudioPageState extends State<StudioPage> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final theme = Theme.of(context);
+    final visible = _visible(state);
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -139,15 +193,32 @@ class _StudioPageState extends State<StudioPage> {
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
           const SizedBox(height: 16),
-          _AiToggle(
-            aiMode: _aiMode,
-            configured: state.aiReady,
-            onChanged: (v) => setState(() => _aiMode = v),
+          // 搜索栏。
+          TextField(
+            controller: _search,
+            onChanged: (v) => setState(() => _query = v),
+            decoration: const InputDecoration(
+              hintText: '搜索证据…',
+              prefixIcon: Icon(Icons.search),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text('选择证据（${_chosen.length} 条）',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '选择证据（${_chosen(state).length}/${state.allEntries.length}）',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (state.allEntries.isNotEmpty)
+                TextButton(
+                  onPressed: () => _toggleSelectAll(state),
+                  child: Text(_allVisibleSelected(state) ? '全不选' : '全选'),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           if (state.allEntries.isEmpty)
             Container(
@@ -167,8 +238,25 @@ class _StudioPageState extends State<StudioPage> {
                 ],
               ),
             )
+          else if (visible.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.search_off, color: theme.colorScheme.secondary),
+                  const SizedBox(height: 8),
+                  Text('没有匹配"$_query"的证据',
+                      style: theme.textTheme.bodySmall),
+                ],
+              ),
+            )
           else
-            ...state.allEntries.map((e) => _SelectableEntry(
+            ...visible.map((e) => _SelectableEntry(
                   entry: e,
                   selected: _selected[e.id] == true,
                   onToggle: () => setState(() {
@@ -216,32 +304,6 @@ class _StudioPageState extends State<StudioPage> {
                 )),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _AiToggle extends StatelessWidget {
-  const _AiToggle({
-    required this.aiMode,
-    required this.configured,
-    required this.onChanged,
-  });
-  final bool aiMode;
-  final bool configured;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: SwitchListTile(
-        value: aiMode,
-        onChanged: onChanged,
-        title: const Text('使用 AI 生成'),
-        subtitle: const Text('需先在「设置」中配置供应商。出站前会先展示披露确认。'),
-        secondary: Icon(Icons.auto_awesome,
-            color: theme.colorScheme.secondary),
       ),
     );
   }

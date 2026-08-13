@@ -8,7 +8,6 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 
 import '../artifacts/artifact_repository.dart';
-import '../artifacts/artifact_service.dart';
 import '../core/models.dart';
 import '../core/storage/storage.dart';
 import '../core/utils.dart';
@@ -25,7 +24,6 @@ class AppState extends ChangeNotifier {
     required this.artifactRepo,
     required this.settings,
     required this.evidenceService,
-    required this.artifactService,
   });
 
   /// 依赖全部由 [AppState.create] 一次性注入。
@@ -35,7 +33,6 @@ class AppState extends ChangeNotifier {
   final ArtifactRepository artifactRepo;
   final SettingsRepository settings;
   final EvidenceService evidenceService;
-  final ArtifactService artifactService;
 
   static Future<AppState> create() async {
     final store = await SharedPrefsStorage.create();
@@ -51,7 +48,6 @@ class AppState extends ChangeNotifier {
       artifactRepo: artifactRepo,
       settings: settingsRepo,
       evidenceService: EvidenceService(entryRepo, evidenceRepo),
-      artifactService: ArtifactService(),
     );
   }
 
@@ -170,17 +166,6 @@ class AppState extends ChangeNotifier {
       evidenceService.answersFor(questionId);
 
   // ---- 工作室 ----
-
-  Future<Artifact> generateLocalArtifact({
-    required ArtifactType type,
-    required List<Entry> sourceEntries,
-  }) async {
-    final a = artifactService.generateLocal(
-        type: type, sourceEntries: sourceEntries);
-    await artifactRepo.save(a);
-    await reload();
-    return a;
-  }
 
   Future<void> updateArtifact(Artifact a) async {
     a.updatedAt = DateTime.now();
