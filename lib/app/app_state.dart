@@ -15,6 +15,8 @@ import '../evidence/evidence_repository.dart';
 import '../evidence/evidence_service.dart';
 import '../journal/journal_repository.dart';
 import '../settings/settings_repository.dart';
+import '../updater/update_prefs.dart';
+import '../updater/update_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState._({
@@ -24,6 +26,7 @@ class AppState extends ChangeNotifier {
     required this.artifactRepo,
     required this.settings,
     required this.evidenceService,
+    required this.updateService,
   });
 
   /// 依赖全部由 [AppState.create] 一次性注入。
@@ -33,6 +36,7 @@ class AppState extends ChangeNotifier {
   final ArtifactRepository artifactRepo;
   final SettingsRepository settings;
   final EvidenceService evidenceService;
+  final UpdateService updateService;
 
   static Future<AppState> create() async {
     final store = await SharedPrefsStorage.create();
@@ -41,6 +45,8 @@ class AppState extends ChangeNotifier {
     final evidenceRepo = LocalEvidenceRepository(jsonStore);
     final artifactRepo = LocalArtifactRepository(jsonStore);
     final settingsRepo = SettingsRepository(store);
+    final updatePrefs = UpdatePrefs(store);
+    final updateService = UpdateService(updatePrefs);
     return AppState._(
       storage: store,
       entries: entryRepo,
@@ -48,6 +54,7 @@ class AppState extends ChangeNotifier {
       artifactRepo: artifactRepo,
       settings: settingsRepo,
       evidenceService: EvidenceService(entryRepo, evidenceRepo),
+      updateService: updateService,
     );
   }
 

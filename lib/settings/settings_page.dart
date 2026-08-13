@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../core/version.dart';
 import 'about_page.dart';
 import 'settings_repository.dart';
 
@@ -18,6 +19,20 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  bool _autoUpdate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoUpdate();
+  }
+
+  Future<void> _loadAutoUpdate() async {
+    final enabled =
+        await context.read<AppState>().updateService.isAutoUpdateEnabled();
+    if (mounted) setState(() => _autoUpdate = enabled);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -26,6 +41,36 @@ class _SettingsPageState extends State<SettingsPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
+          // 通用组（可折叠）：自动更新开关。
+          Card(
+            child: ExpansionTile(
+              leading: Icon(Icons.tune, color: theme.colorScheme.secondary),
+              title: const Text('通用'),
+              initiallyExpanded: true,
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.system_update_alt),
+                  title: const Text('自动更新'),
+                  subtitle: Text(
+                    _autoUpdate ? '发现新版本时自动下载并安装' : '发现新版本时仅提示',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.secondary),
+                  ),
+                  value: _autoUpdate,
+                  onChanged: (v) async {
+                    setState(() => _autoUpdate = v);
+                    await context
+                        .read<AppState>()
+                        .updateService
+                        .setAutoUpdateEnabled(v);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           // 供应商配置组（可折叠）。
           Card(
             child: ExpansionTile(
@@ -97,7 +142,7 @@ class _SettingsPageState extends State<SettingsPage> {
               leading:
                   Icon(Icons.info_outline, color: theme.colorScheme.secondary),
               title: const Text('关于'),
-              subtitle: const Text('版本 v1.0.0 · 晨昏证据图谱'),
+              subtitle: Text('版本 v$kAppVersionName · 晨昏证据图谱'),
               initiallyExpanded: true,
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [

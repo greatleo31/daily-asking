@@ -9,6 +9,7 @@ import '../evidence/evidence_page.dart';
 import '../journal/today_page.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_repository.dart';
+import '../updater/update_info.dart';
 import 'app_state.dart';
 
 class AppShell extends StatefulWidget {
@@ -22,6 +23,66 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
 
   static const _titles = ['今日', '证据', '工作室', '设置'];
+
+  @override
+  void initState() {
+    super.initState();
+    // 启动后延迟自动检查：失败静默，强制更新时弹不可关闭框。
+    Future.delayed(const Duration(seconds: 4), _autoCheckUpdate);
+  }
+
+  Future<void> _autoCheckUpdate() async {
+    final state = context.read<AppState>();
+    final decision = await state.updateService.check();
+    if (!mounted) return;
+    switch (decision) {
+      case UpdateAvailable(:final info):
+        if (info.mandatory) {
+          await _showMandatoryUpdate(info);
+        } else if (await state.updateService.isAutoUpdateEnabled()) {
+          final ok = await state.updateService.downloadAndInstall(info);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+                  Text(ok ? '发现新版本 ${info.versionName}，已开始自动下载' : '更新下载失败，请重试')));
+        }
+      default:
+        break; // NoUpdate / 失败：启动检查静默。
+    }
+  }
+
+  /// 强制更新：不可关闭，返回键/外部点击均无效。
+  Future<void> _showMandatoryUpdate(UpdateInfo info) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text('需要更新到 ${info.versionName}'),
+          content: SingleChildScrollView(
+            child: Text(
+              info.changelog.isNotEmpty
+                  ? info.changelog
+                  : '当前版本需要更新后才能继续使用。',
+              style: Theme.of(ctx).textTheme.bodyMedium,
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () async {
+                await context
+                    .read<AppState>()
+                    .updateService
+                    .downloadAndInstall(info);
+              },
+              child: const Text('立即更新'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _toggleTheme() async {
     final state = context.read<AppState>();

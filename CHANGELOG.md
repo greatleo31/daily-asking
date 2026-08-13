@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1] - 2026-08-13
+
+### 新增
+
+- 版本与更新机制（需求 2）：`关于` 页「检查更新」、启动自动检查、设置页「自动更新」开关；强制更新不可关闭。
+- 更新清单协议 `latest.json`（versionCode / versionName / url / changelog / mandatory / sha256 等），DownloadManager 下载 + SHA-256 校验 + 系统安装页。
+- API Key 迁移到加密存储：flutter_secure_storage（Android Keystore + EncryptedSharedPreferences），旧明文自动迁移并删除。
+- 发布脚本：`scripts/bump-version.sh`（单一来源版本号）、`scripts/generate-latest-json.sh`（生成更新清单）。
+- 关于页展示版本号与上次检查时间。
+
+### 技术
+
+- 版本号单一来源 `lib/core/version.dart`（v1.1.1 / versionCode 10101），与 pubspec 同步。
+- 更新相关单元测试：清单解析容错、版本比对三态、versionCode 公式。
+
 ## [1.0.0] - 2026-08-11
 
 ### 新增

@@ -18,6 +18,7 @@
 - **工作室（可选 AI）**：选择一条或多条证据，生成简历要点 / 周报 / 面试追问卡。
 - **BYOK（Bring Your Own Key）**：AI 调用使用你自己的 API Key（OpenAI 兼容），Key 只保存在本机隔离存储，页面不回显；每次真实调用前展示**出站披露**，确认后才发送，且只发送你选中的最小字段。
 - **主题切换**：跟随系统 / 亮色 / 深色。
+- **版本更新**：关于页手动检查更新、启动自动检查；可开启「自动更新」，强制更新不可跳过；更新清单与 APK 校验见 [docs/02-版本与更新机制.md](docs/02-版本与更新机制.md)。
 
 ## 🚀 快速开始
 
@@ -60,7 +61,8 @@ flutter build apk --release
 - `lib/evidence/` — 证据记录、追问引擎、证据图谱
 - `lib/journal/` — 今日记录页
 - `lib/artifacts/` — 工作室与产物管理
-- `lib/settings/` — 设置与 BYOK 配置
+- `lib/settings/` — 设置、BYOK 配置与 API Key 加密存储
+- `lib/updater/` — 版本检查与更新机制
 - `lib/app/` — 应用壳与全局状态
 
 详见 [docs/architecture.md](docs/architecture.md)。
