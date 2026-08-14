@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../core/export/markdown_exporter.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
 import 'question_card.dart';
@@ -78,6 +79,23 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
     }
   }
 
+  Future<void> _export(BuildContext context, Entry e) async {
+    final state = context.read<AppState>();
+    final answers = <String, List<EvidenceAnswer>>{};
+    for (final q in _questions) {
+      answers[q.id] = await state.answersFor(q.id);
+    }
+    final md = entryToMarkdown(e, _questions, answers);
+    final ok = await MarkdownShare.share(
+      fileName: singleFileName(DateTime.now()),
+      content: md,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      SnackBar(content: Text(ok ? '已导出并唤起分享' : '导出失败，请重试')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -105,6 +123,11 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
                   ),
                   _Tag(count: e.completenessPercent(), label: '完整度'),
                   const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _export(context, e),
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: '导出 Markdown',
+                  ),
                   IconButton(
                     onPressed: () => _edit(context, e),
                     icon: const Icon(Icons.edit_outlined),

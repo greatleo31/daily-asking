@@ -184,7 +184,7 @@ class EvidenceAnswer {
 enum ArtifactType {
   resume('简历要点'),
   weekly('周报'),
-  interview('面试追问卡');
+  interview('面试反馈');
 
   const ArtifactType(this.label);
   final String label;

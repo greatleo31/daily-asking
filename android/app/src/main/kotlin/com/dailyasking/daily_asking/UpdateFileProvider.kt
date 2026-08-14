@@ -37,7 +37,14 @@ class UpdateFileProvider : ContentProvider() {
 
     override fun onCreate(): Boolean = true
 
-    override fun getType(uri: Uri): String? = "application/vnd.android.package-archive"
+    override fun getType(uri: Uri): String? {
+        val name = uri.lastPathSegment ?: return null
+        return if (name.endsWith(".md", ignoreCase = true)) {
+            "text/markdown"
+        } else {
+            "application/vnd.android.package-archive"
+        }
+    }
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
         val name = uri.lastPathSegment ?: throw FileNotFoundException("空文件名")

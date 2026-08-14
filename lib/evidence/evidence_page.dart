@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../core/export/markdown_exporter.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
 import 'evidence_detail_page.dart';
@@ -59,6 +60,24 @@ class _EvidencePageState extends State<EvidencePage> {
     return list;
   }
 
+  Future<void> _exportAll(BuildContext context) async {
+    final state = context.read<AppState>();
+    if (state.allEntries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('还没有可导出的证据')));
+      return;
+    }
+    final md = await buildAllMarkdown(state);
+    final ok = await MarkdownShare.share(
+      fileName: allFileName(DateTime.now()),
+      content: md,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      SnackBar(content: Text(ok ? '已导出并唤起分享' : '导出失败，请重试')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -69,9 +88,20 @@ class _EvidencePageState extends State<EvidencePage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text('共 ${state.allEntries.length} 条',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.secondary)),
+          Row(
+            children: [
+              Expanded(
+                child: Text('共 ${state.allEntries.length} 条',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.secondary)),
+              ),
+              TextButton.icon(
+                onPressed: () => _exportAll(context),
+                icon: const Icon(Icons.ios_share, size: 18),
+                label: const Text('导出全部'),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           // 图谱。
           EvidenceGraph(metrics: state.metrics),

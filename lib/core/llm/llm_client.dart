@@ -1,4 +1,4 @@
-/// core/llm：可选 BYOK AI 客户端（OpenAI 兼容）。
+/// core/llm：可选 AI 客户端（OpenAI 兼容）。
 ///
 /// 隐私与安全约束：
 /// - 只发送当前用户选中的最小字段（见 [OutboundPayload]）。
@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 
 import '../models.dart';
 import '../../settings/settings_repository.dart';
+import 'prompts.dart';
 
 /// 一次出站调用的最小载荷：只包含选中的证据字段，用于披露与发送。
 class OutboundPayload {
@@ -46,22 +47,12 @@ class OutboundPayload {
   }
 
   /// 组装发送给模型的系统提示词（不含正文全文，仅字段化摘要）。
-  String buildSystemPrompt(ArtifactType type) {
-    final kind = switch (type) {
-      ArtifactType.resume => '把下列证据整理成简历要点',
-      ArtifactType.weekly => '把下列证据整理成周报要点',
-      ArtifactType.interview => '针对下列证据生成面试追问卡',
-    };
-    return [
-      kind,
-      '要求：只使用提供的字段，不得编造数字、公司名、项目名、成果。',
-      '输出需包含三部分：已有事实、缺失证据、风险提示。',
-    ].join('\n');
-  }
+  String buildSystemPrompt(ArtifactType type) => systemPromptFor(type);
 
   /// 组装发送给模型的用户消息（仅字段化摘要，不含正文全文）。
   String buildUserMessage() {
-    final b = StringBuffer('请基于以下证据生成产物：\n');
+    final b =
+        StringBuffer('请基于以下证据生成产物（字段为空 = 该条证据缺失该信息，请按提示词要求占位，不要编造）：\n');
     for (var i = 0; i < entries.length; i++) {
       final e = entries[i];
       b.writeln('证据#${i + 1}:');

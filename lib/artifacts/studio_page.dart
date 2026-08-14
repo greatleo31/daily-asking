@@ -1,4 +1,4 @@
-/// 工作室：搜索并选择证据，默认用 AI 生成简历要点 / 周报 / 面试追问卡。
+/// 工作室：搜索并选择证据，默认用 AI 生成简历要点 / 周报 / 面试反馈。
 ///
 /// - AI 未配置时，点生成会强制引导先配置供应商（不可跳过）。
 /// - 已配置时出站前必须展示披露（服务商/模型/路径/字段范围）。
@@ -189,7 +189,7 @@ class _StudioPageState extends State<StudioPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          Text('选择证据，生成简历要点 / 周报 / 面试追问卡',
+          Text('选择证据，生成简历要点 / 周报 / 面试反馈',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
           const SizedBox(height: 16),
@@ -287,8 +287,8 @@ class _StudioPageState extends State<StudioPage> {
           _GenButton(
             color: const Color(0xFF2E6E7E),
             icon: Icons.question_answer_outlined,
-            title: '面试追问卡',
-            subtitle: '把每条证据拆成可被追问的卡片',
+            title: '面试反馈',
+            subtitle: '像面试官看完你的所有工作一样，给出真实反馈与成长建议',
             busy: _busy,
             onTap: () => _generate(ArtifactType.interview),
           ),

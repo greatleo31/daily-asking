@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../app/app_state.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
+import '../evidence/evidence_detail_page.dart';
 import '../evidence/question_card.dart';
 
 class TodayPage extends StatefulWidget {
@@ -245,7 +246,9 @@ class _TodayEntryTile extends StatelessWidget {
         ),
         trailing: Icon(Icons.chevron_right,
             color: theme.colorScheme.secondary),
-        onTap: () {},
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => EvidenceDetailPage(entryId: entry.id))),
       ),
     );
   }

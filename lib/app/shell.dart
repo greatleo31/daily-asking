@@ -149,17 +149,3 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// 全局壳入口：等待 AppState 就绪后渲染。
-class RootShell extends StatelessWidget {
-  const RootShell({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    if (!state.loaded) {
-      // 首次进入：空态引导（不影响快速记录）。
-      return const AppShell();
-    }
-    return const AppShell();
-  }
-}

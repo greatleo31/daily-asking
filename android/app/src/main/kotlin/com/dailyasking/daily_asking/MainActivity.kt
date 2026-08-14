@@ -2,6 +2,7 @@ package com.dailyasking.daily_asking
 
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -27,6 +28,7 @@ import java.security.MessageDigest
  */
 class MainActivity : FlutterActivity() {
     private val channelName = "com.dailyasking.daily_asking/update"
+    private val exportChannelName = "com.dailyasking.daily_asking/export"
     private var downloadReceiver: BroadcastReceiver? = null
     private var pendingSha256: String? = null
 
@@ -53,6 +55,17 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    else -> result.notImplemented()
+                }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, exportChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "shareMarkdown" -> shareMarkdown(
+                        call.argument<String>("fileName"),
+                        call.argument<String>("content"),
+                        result
+                    )
                     else -> result.notImplemented()
                 }
             }
@@ -166,6 +179,33 @@ class MainActivity : FlutterActivity() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(intent)
+    }
+
+    /** 导出 Markdown：写入应用外部 Download 目录，再唤起系统分享面板。 */
+    private fun shareMarkdown(
+        fileName: String?,
+        content: String?,
+        result: MethodChannel.Result
+    ) {
+        try {
+            val name = fileName ?: "daily-asking.md"
+            val dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+            val file = File(dir, name)
+            file.writeText(content ?: "", Charsets.UTF_8)
+            val uri = UpdateFileProvider.contentUri(this, file.name)
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/markdown"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, name)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newUri(contentResolver, name, uri)
+            }
+            startActivity(Intent.createChooser(send, "导出 Markdown"))
+            result.success(true)
+        } catch (e: Exception) {
+            toast("导出失败，请重试")
+            result.error("export_failed", "导出失败", e.message)
+        }
     }
 
     private fun toast(msg: String) {
