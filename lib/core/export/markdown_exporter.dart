@@ -24,6 +24,10 @@ String singleFileName(DateTime now) => 'daily-asking-${_stamp(now)}.md';
 /// 全部导出文件名。
 String allFileName(DateTime now) => 'daily-asking-all-${_stamp(now)}.md';
 
+/// 产物导出文件名。
+String artifactFileName(Artifact a, DateTime now) =>
+    '${a.type.label}-${_stamp(now)}.md';
+
 String _dateLabel(DateTime d) =>
     '${d.year}年${d.month}月${d.day}日';
 
@@ -98,6 +102,21 @@ String allEntriesToMarkdown(
     buf.writeln();
     buf.writeln('---');
     buf.writeln();
+  }
+  return buf.toString();
+}
+
+/// 单个产物 → Markdown（纯函数，可测试）。
+String artifactToMarkdown(Artifact a) {
+  final buf = StringBuffer();
+  buf.writeln('# ${a.type.label} · ${_dateLabel(a.updatedAt)}');
+  buf.writeln();
+  buf.writeln('> AI 生成产物，未经人工核验，请逐条验证后使用。');
+  buf.writeln();
+  final body = a.content.trim();
+  if (body.isNotEmpty) {
+    buf.write(body);
+    if (!body.endsWith('\n')) buf.writeln();
   }
   return buf.toString();
 }

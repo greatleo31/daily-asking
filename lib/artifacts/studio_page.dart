@@ -17,7 +17,13 @@ import '../../settings/settings_repository.dart';
 import 'artifact_view_page.dart';
 
 class StudioPage extends StatefulWidget {
-  const StudioPage({super.key});
+  const StudioPage({
+    super.key,
+    this.initialEntryIds = const [],
+    this.showAppBar = false,
+  });
+  final List<String> initialEntryIds;
+  final bool showAppBar;
 
   @override
   State<StudioPage> createState() => _StudioPageState();
@@ -28,6 +34,14 @@ class _StudioPageState extends State<StudioPage> {
   final _search = TextEditingController();
   String _query = '';
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final id in widget.initialEntryIds) {
+      _selected[id] = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -185,8 +199,7 @@ class _StudioPageState extends State<StudioPage> {
     final state = context.watch<AppState>();
     final theme = Theme.of(context);
     final visible = _visible(state);
-    return SafeArea(
-      child: ListView(
+    final content = ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
           Text('选择证据，生成简历要点 / 周报 / 面试反馈',
@@ -304,8 +317,13 @@ class _StudioPageState extends State<StudioPage> {
                 )),
           ],
         ],
-      ),
-    );
+      );
+    return widget.showAppBar
+        ? Scaffold(
+            appBar: AppBar(title: const Text('重新分析')),
+            body: content,
+          )
+        : SafeArea(child: content);
   }
 }
 

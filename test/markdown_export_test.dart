@@ -110,4 +110,57 @@ void main() {
       expect(md, contains('第二条记录'));
     });
   });
+
+  group('artifactFileName / artifactToMarkdown', () {
+    Artifact artifact({ArtifactType type = ArtifactType.resume}) => Artifact(
+          id: 'a1',
+          type: type,
+          content: '## 一、行动与结果\n- 完成 A 项目\n',
+          sourceEntryIds: const ['e1'],
+          risks: const ['AI 生成内容未经人工核对，请逐条验证。'],
+          gaps: const ['AI 生成内容不保证覆盖全部缺失证据，请自行核对。'],
+          createdAt: DateTime(2026, 8, 14, 9),
+          updatedAt: DateTime(2026, 8, 14, 10),
+        );
+
+    test('产物文件名使用类型 label + 时间戳', () {
+      expect(
+        artifactFileName(artifact(), DateTime(2026, 8, 14, 21, 40)),
+        '简历要点-20260814-2140.md',
+      );
+      expect(
+        artifactFileName(artifact(type: ArtifactType.weekly),
+            DateTime(2026, 8, 14, 21, 40)),
+        '周报-20260814-2140.md',
+      );
+      expect(
+        artifactFileName(artifact(type: ArtifactType.interview),
+            DateTime(2026, 8, 14, 21, 40)),
+        '面试反馈-20260814-2140.md',
+      );
+    });
+
+    test('产物导出含标题、免责声明与原文', () {
+      final md = artifactToMarkdown(artifact());
+      expect(md, startsWith('# 简历要点 · 2026年8月14日'));
+      expect(md, contains('> AI 生成产物，未经人工核验'));
+      expect(md, contains('## 一、行动与结果'));
+      expect(md, contains('- 完成 A 项目'));
+    });
+
+    test('空内容产物导出不崩溃', () {
+      final a = Artifact(
+        id: 'a2',
+        type: ArtifactType.interview,
+        content: '   ',
+        sourceEntryIds: const [],
+        risks: const [],
+        gaps: const [],
+        createdAt: DateTime(2026, 8, 14),
+        updatedAt: DateTime(2026, 8, 14),
+      );
+      final md = artifactToMarkdown(a);
+      expect(md, contains('# 面试反馈'));
+    });
+  });
 }
