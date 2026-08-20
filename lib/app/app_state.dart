@@ -109,11 +109,12 @@ class AppState extends ChangeNotifier {
     await reload();
   }
 
+  List<Entry> _computeToday() =>
+      _allEntries.where((e) => sameDay(e.date, DateTime.now())).toList();
+
   Future<void> reload() async {
     _allEntries = await entries.list();
-    _todayEntries = _allEntries
-        .where((e) => sameDay(e.date, DateTime.now()))
-        .toList();
+    _todayEntries = _computeToday();
     _metrics = await evidenceService.metrics();
     _artifacts = await artifactRepo.list();
     _llm = await settings.readLlmSettings();
@@ -128,6 +129,15 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- 今日 / 记录操作 ----
+
+  /// 只重算「今日」视图并通知。
+  ///
+  /// 进程跨天存活（隔夜后台 / 跨零点）时 [reload] 不会自动执行，
+  /// 由应用壳在恢复前台 / 切回「今日」Tab 时调用，避免日期与列表过期。
+  void refreshToday() {
+    _todayEntries = _computeToday();
+    notifyListeners();
+  }
 
   /// 快速记录一句话事实，返回可能生成的追问。
   Future<EvidenceQuestion?> saveQuickToday(String task) async {

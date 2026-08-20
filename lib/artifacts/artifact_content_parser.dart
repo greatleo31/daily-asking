@@ -222,44 +222,60 @@ InterviewFeedbackView buildInterviewFeedbackView(String content) {
 }
 
 /// 从「逐条点评」章节中解析条目（`### ` 小节）。
+///
+/// 字段支持两种形态：
+/// - 行内值：`- 亮点：xxx`；
+/// - 空标签 + 续行：`- 亮点：` 后跟多行 bullet，吸收为同一字段值
+///   （直到下一个已知字段标签）；字段内的子标签行（如 `- 往深挖：…`）
+///   同样并入当前字段。
+/// 任何已知字段出现之前的内容保留进 [InterviewItem.rawLines]；
+/// 字段最终为空时置 null，页面不渲染空标签。
 List<InterviewItem> _parseItems(ArtifactSection section) {
+  const knownLabels = {'有效性', '亮点', '偏浅处', '扩展建议'};
   final result = <InterviewItem>[];
   for (final sub in section.subsections) {
-    String? effective;
-    String? highlight;
-    String? shallow;
-    String? expand;
+    final values = <String, String>{};
     final raw = <String>[];
+    String? current;
+
+    void absorb(String text) {
+      final field = current;
+      if (text.isEmpty || field == null) return;
+      final prev = values[field] ?? '';
+      values[field] = prev.isEmpty ? text : '$prev\n$text';
+    }
+
     for (final line in sub.lines) {
       final text = _stripBullet(line);
       if (text.isEmpty) continue;
       final idx = text.indexOf('：');
-      if (idx > 0) {
+      if (idx > 0 && knownLabels.contains(text.substring(0, idx))) {
         final label = text.substring(0, idx);
         final value = text.substring(idx + 1).trim();
-        switch (label) {
-          case '有效性':
-            effective = value;
-            continue;
-          case '亮点':
-            highlight = value;
-            continue;
-          case '偏浅处':
-            shallow = value;
-            continue;
-          case '扩展建议':
-            expand = value;
-            continue;
-        }
+        current = label;
+        if (value.isNotEmpty) values[label] = value;
+        continue;
       }
-      raw.add(text);
+      // 非已知标签的行（含「往深挖：」这类字段内子标签）：
+      // 若已有当前字段则并入该字段，否则保留为 rawLines。
+      if (current != null) {
+        absorb(text);
+      } else {
+        raw.add(text);
+      }
     }
+
+    String? field(String label) {
+      final v = values[label];
+      return (v == null || v.trim().isEmpty) ? null : v.trim();
+    }
+
     result.add(InterviewItem(
       title: sub.title,
-      effective: effective,
-      highlight: highlight,
-      shallow: shallow,
-      expand: expand,
+      effective: field('有效性'),
+      highlight: field('亮点'),
+      shallow: field('偏浅处'),
+      expand: field('扩展建议'),
       rawLines: raw,
     ));
   }

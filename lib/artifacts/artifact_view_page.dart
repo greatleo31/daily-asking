@@ -492,25 +492,25 @@ class _ItemCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (item.effective != null)
+              if (item.effective?.isNotEmpty == true)
                 _LabeledLine(
                     icon: Icons.circle_outlined,
                     label: '有效性',
                     text: item.effective!,
                     color: theme.colorScheme.onSurface),
-              if (item.highlight != null)
+              if (item.highlight?.isNotEmpty == true)
                 _LabeledLine(
                     icon: Icons.check_circle_outline,
                     label: '亮点',
                     text: item.highlight!,
                     color: theme.colorScheme.primary),
-              if (item.shallow != null)
+              if (item.shallow?.isNotEmpty == true)
                 _LabeledLine(
                     icon: Icons.warning_amber_outlined,
                     label: '偏浅处',
                     text: item.shallow!,
                     color: const Color(0xFFC98A2D)),
-              if (item.expand != null)
+              if (item.expand?.isNotEmpty == true)
                 _LabeledLine(
                     icon: Icons.arrow_outward,
                     label: '扩展建议',

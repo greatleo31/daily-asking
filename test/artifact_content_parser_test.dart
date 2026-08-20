@@ -104,6 +104,60 @@ void main() {
       expect(v.overall, isNull);
     });
 
+    test('字段值为空标签时吸收续行为同一字段', () {
+      const md4 = '''
+## 二、逐条点评
+### 1. 某任务
+- 有效性：可以作为引子
+- 亮点：
+- 选择「从零复刻」体现主动学习
+- 偏浅处：
+- 只做了使用，未涉及原理
+- 扩展建议：深挖状态机
+''';
+      final v = buildInterviewFeedbackView(md4);
+      final item = v.items.single;
+      expect(item.effective, '可以作为引子');
+      expect(item.highlight, '选择「从零复刻」体现主动学习');
+      expect(item.shallow, '只做了使用，未涉及原理');
+      expect(item.expand, '深挖状态机');
+      expect(item.rawLines, isEmpty);
+    });
+
+    test('空标签无续行：字段为 null（页面不渲染空标签）', () {
+      const md5 =
+          '## 二、逐条点评\n### 1. 某任务\n- 亮点：\n- 扩展建议：深挖状态机\n';
+      final v = buildInterviewFeedbackView(md5);
+      final item = v.items.single;
+      expect(item.highlight, isNull);
+      expect(item.expand, '深挖状态机');
+    });
+
+    test('已知字段出现前的行保留 rawLines', () {
+      const md6 =
+          '## 二、逐条点评\n### 1. 某任务\n- 前置说明行\n- 有效性：引子\n';
+      final v = buildInterviewFeedbackView(md6);
+      final item = v.items.single;
+      expect(item.effective, '引子');
+      expect(item.rawLines, ['前置说明行']);
+    });
+
+    test('字段内子标签续行（如「往深挖：」）并入当前字段', () {
+      const md7 = '''
+## 二、逐条点评
+### 1. 某任务
+- 扩展建议：准备一次完整运行的 demo：调用模型拿到结果。
+- 往深挖：拆解 agent loop 的状态机。
+''';
+      final v = buildInterviewFeedbackView(md7);
+      final item = v.items.single;
+      expect(
+        item.expand,
+        '准备一次完整运行的 demo：调用模型拿到结果。\n往深挖：拆解 agent loop 的状态机。',
+      );
+      expect(item.rawLines, isEmpty);
+    });
+
     test('纯文本无结构返回 isStructured=false', () {
       final v = buildInterviewFeedbackView('只有一行字。');
       expect(v.isStructured, isFalse);

@@ -19,7 +19,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
 
   static const _titles = ['今日', '证据', '工作室', '设置'];
@@ -27,8 +27,23 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // 启动后延迟自动检查：失败静默，强制更新时弹不可关闭框。
     Future.delayed(const Duration(seconds: 4), _autoCheckUpdate);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 隔夜/跨零点后回到前台：刷新「今日」日期与列表，避免显示过期日期。
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<AppState>().refreshToday();
+    }
   }
 
   Future<void> _autoCheckUpdate() async {
@@ -121,7 +136,11 @@ class _AppShellState extends State<AppShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          // 切回「今日」时顺带刷新（进程长期存活时日期可能已跨天）。
+          if (i == 0) context.read<AppState>().refreshToday();
+          setState(() => _index = i);
+        },
         destinations: [
           NavigationDestination(
             icon: Icon(Icons.wb_sunny_outlined, color: labelColor),
