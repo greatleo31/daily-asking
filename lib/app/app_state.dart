@@ -1,6 +1,7 @@
 /// 应用级状态：组装所有 Repository / Service，并向页面暴露反应式数据。
 ///
 /// 保持低耦合：页面只依赖 [AppState] 暴露的方法与数据，不直接碰存储。
+/// Repository 是私有实现细节；写操作按受影响领域定向刷新，避免无条件完整 reload。
 library;
 
 import 'dart:collection';
@@ -18,24 +19,24 @@ import '../settings/settings_repository.dart';
 import '../updater/update_prefs.dart';
 import '../updater/update_service.dart';
 
+/// 应用组合根与门面：持有全部 Repository / Service，向 UI 暴露稳定状态快照
+/// 与跨实体业务操作。
 class AppState extends ChangeNotifier {
   AppState._({
-    required this.storage,
-    required this.entries,
-    required this.evidence,
-    required this.artifactRepo,
-    required this.settings,
-    required this.evidenceService,
+    required this._entries,
+    required this._artifactRepo,
+    required this._settings,
+    required this._evidenceService,
     required this.updateService,
   });
 
   /// 依赖全部由 [AppState.create] 一次性注入。
-  final StorageService storage;
-  final EntryRepository entries;
-  final EvidenceRepository evidence;
-  final ArtifactRepository artifactRepo;
-  final SettingsRepository settings;
-  final EvidenceService evidenceService;
+  final EntryRepository _entries;
+  final ArtifactRepository _artifactRepo;
+  final SettingsRepository _settings;
+  final EvidenceService _evidenceService;
+
+  /// 更新服务（非持久化 Repository，UI 直接使用）。
   final UpdateService updateService;
 
   static Future<AppState> create() async {
@@ -48,9 +49,7 @@ class AppState extends ChangeNotifier {
     final updatePrefs = UpdatePrefs(store);
     final updateService = UpdateService(updatePrefs);
     return AppState._(
-      storage: store,
       entries: entryRepo,
-      evidence: evidenceRepo,
       artifactRepo: artifactRepo,
       settings: settingsRepo,
       evidenceService: EvidenceService(entryRepo, evidenceRepo),
@@ -99,7 +98,7 @@ class AppState extends ChangeNotifier {
     return '今天已沉淀 ${_todayEntries.length} 条证据';
   }
 
-  final Map<String, List<EvidenceQuestion>> _openByEntry = {};
+  Map<String, List<EvidenceQuestion>> _openByEntry = {};
 
   List<EvidenceQuestion> _openFor(String entryId) =>
       _openByEntry[entryId] ?? const [];
@@ -112,20 +111,40 @@ class AppState extends ChangeNotifier {
   List<Entry> _computeToday() =>
       _allEntries.where((e) => sameDay(e.date, DateTime.now())).toList();
 
+  /// 完整加载（应用启动 bootstrap 使用）。
   Future<void> reload() async {
-    _allEntries = await entries.list();
-    _todayEntries = _computeToday();
-    _metrics = await evidenceService.metrics();
-    _artifacts = await artifactRepo.list();
-    _llm = await settings.readLlmSettings();
-    _hasApiKey = await settings.hasApiKey();
-    _theme = await settings.readTheme();
-    _openByEntry.clear();
-    for (final e in _allEntries) {
-      _openByEntry[e.id] = await evidenceService.openQuestionsForEntry(e.id);
-    }
+    await _refreshAll();
     _loaded = true;
     notifyListeners();
+  }
+
+  // ---- 领域刷新单元（写操作按受影响领域定向刷新，避免完整 reload）----
+
+  /// 证据域：Entry / 今日 / 全部证据 / 图谱指标 / 开放问题。
+  Future<void> _refreshEvidence() async {
+    _allEntries = await _entries.list();
+    _todayEntries = _computeToday();
+    final view = await _evidenceService.refreshView(_allEntries);
+    _metrics = view.metrics;
+    _openByEntry = view.openByEntry;
+  }
+
+  /// 产物域。
+  Future<void> _refreshArtifacts() async {
+    _artifacts = await _artifactRepo.list();
+  }
+
+  /// 设置域：LLM 配置 / API Key 状态 / 主题。
+  Future<void> _refreshSettings() async {
+    _llm = await _settings.readLlmSettings();
+    _hasApiKey = await _settings.hasApiKey();
+    _theme = await _settings.readTheme();
+  }
+
+  Future<void> _refreshAll() async {
+    await _refreshEvidence();
+    await _refreshArtifacts();
+    await _refreshSettings();
   }
 
   // ---- 今日 / 记录操作 ----
@@ -149,57 +168,91 @@ class AppState extends ChangeNotifier {
       createdAt: now,
       updatedAt: now,
     );
-    final q = await evidenceService.saveEntryAndGenerateQuestion(entry);
-    await reload();
+    final q = await _evidenceService.saveEntryAndGenerateQuestion(entry);
+    await _refreshEvidence();
+    notifyListeners();
     return q;
   }
 
   Future<void> updateEntry(Entry entry) async {
     entry.updatedAt = DateTime.now();
-    await entries.save(entry);
-    await reload();
+    await _entries.save(entry);
+    await _refreshEvidence();
+    notifyListeners();
   }
 
   Future<void> deleteEntry(String entryId) async {
-    await evidenceService.deleteEntryCascade(entryId);
-    await reload();
+    await _evidenceService.deleteEntryCascade(entryId);
+    await _refreshEvidence();
+    notifyListeners();
   }
 
   /// 回答追问，并回填 entry 字段。
   Future<void> answerQuestion(String questionId, String content) async {
-    await evidenceService.answerQuestion(questionId, content);
-    await reload();
+    await _evidenceService.answerQuestion(questionId, content);
+    await _refreshEvidence();
+    notifyListeners();
   }
 
   Future<void> setQuestionStatus(String questionId, QuestionStatus status) async {
-    await evidenceService.setQuestionStatus(questionId, status);
-    await reload();
+    await _evidenceService.setQuestionStatus(questionId, status);
+    await _refreshEvidence();
+    notifyListeners();
   }
 
   Future<List<EvidenceQuestion>> questionsFor(String entryId) =>
-      evidenceService.questionsForEntry(entryId);
+      _evidenceService.questionsForEntry(entryId);
 
   Future<List<EvidenceAnswer>> answersFor(String questionId) =>
-      evidenceService.answersFor(questionId);
+      _evidenceService.answersFor(questionId);
+
+  /// 按 id 读取 Entry（供证据详情页）。
+  Future<Entry?> findEntry(String id) => _entries.find(id);
 
   // ---- 工作室 ----
 
+  /// 保存（新建或更新）一份产物，仅刷新产物域。
   Future<void> updateArtifact(Artifact a) async {
     a.updatedAt = DateTime.now();
-    await artifactRepo.save(a);
-    await reload();
+    await _artifactRepo.save(a);
+    await _refreshArtifacts();
+    notifyListeners();
   }
 
   Future<void> deleteArtifact(String id) async {
-    await artifactRepo.delete(id);
-    await reload();
+    await _artifactRepo.delete(id);
+    await _refreshArtifacts();
+    notifyListeners();
   }
+
+  /// 按 id 读取 Artifact（供产物查看页）。
+  Future<Artifact?> findArtifact(String id) => _artifactRepo.find(id);
 
   // ---- 设置 ----
 
   Future<void> setTheme(ThemeModePreference t) async {
-    await settings.writeTheme(t);
+    await _settings.writeTheme(t);
     _theme = t;
     notifyListeners();
   }
+
+  /// 读取 LLM 配置（供配置页回填 / 出站调用）。
+  Future<LlmSettings> readLlmSettings() => _settings.readLlmSettings();
+
+  /// 保存 LLM 配置，仅刷新设置域。
+  Future<void> saveLlmSettings(LlmSettings settings, {String? apiKey}) async {
+    await _settings.writeLlmSettings(settings, apiKey: apiKey);
+    await _refreshSettings();
+    notifyListeners();
+  }
+
+  /// 清除 LLM 配置，仅刷新设置域。
+  Future<void> clearLlmSettings() async {
+    await _settings.clearLlm();
+    await _refreshSettings();
+    notifyListeners();
+  }
+
+  /// 供出站 AI 调用读取 Key（无 Key 时返回 null；内容绝不回显 UI）。
+  Future<String?> readApiKeyForCall() => _settings.readApiKeyForCall();
 }

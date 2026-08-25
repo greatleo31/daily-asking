@@ -49,15 +49,14 @@ class _StudioPageState extends State<StudioPage> {
     super.dispose();
   }
 
-  List<Entry> _chosen(AppState state) =>
-      state.allEntries.where((e) => _selected[e.id] == true).toList();
+  List<Entry> _chosen(List<Entry> allEntries) =>
+      allEntries.where((e) => _selected[e.id] == true).toList();
 
   /// 搜索过滤后的可见证据列表（作用于任务/背景/行动/结果/难点/标签）。
-  List<Entry> _visible(AppState state) {
-    final all = state.allEntries;
+  List<Entry> _visible(List<Entry> allEntries) {
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return all;
-    return all
+    if (q.isEmpty) return allEntries;
+    return allEntries
         .where((e) =>
             '${e.task} ${e.context} ${e.action} ${e.result} ${e.blocker} '
                     '${e.tags.join()}'
@@ -66,15 +65,15 @@ class _StudioPageState extends State<StudioPage> {
         .toList();
   }
 
-  bool _allVisibleSelected(AppState state) {
-    final vis = _visible(state);
+  bool _allVisibleSelected(List<Entry> allEntries) {
+    final vis = _visible(allEntries);
     return vis.isNotEmpty && vis.every((e) => _selected[e.id] == true);
   }
 
   /// 全选 / 全不选当前搜索过滤后的结果。
-  void _toggleSelectAll(AppState state) {
-    final vis = _visible(state);
-    final select = !_allVisibleSelected(state);
+  void _toggleSelectAll(List<Entry> allEntries) {
+    final vis = _visible(allEntries);
+    final select = !_allVisibleSelected(allEntries);
     setState(() {
       for (final e in vis) {
         _selected[e.id] = select;
@@ -84,7 +83,7 @@ class _StudioPageState extends State<StudioPage> {
 
   Future<void> _generate(ArtifactType type) async {
     final state = context.read<AppState>();
-    final chosen = _chosen(state);
+    final chosen = _chosen(state.allEntries);
     if (chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('请先选择至少一条证据')));
@@ -101,7 +100,7 @@ class _StudioPageState extends State<StudioPage> {
       return;
     }
 
-    final settings = await state.settings.readLlmSettings();
+    final settings = await state.readLlmSettings();
     final apiKey = await _readApiKey();
     if (!mounted) return;
     final payload = OutboundPayload(entries: chosen, artifactType: type);
@@ -132,8 +131,7 @@ class _StudioPageState extends State<StudioPage> {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    await state.artifactRepo.save(artifact);
-    await state.reload();
+    await state.updateArtifact(artifact);
     if (!mounted) return;
     await _open(artifact.id);
   }
@@ -158,12 +156,9 @@ class _StudioPageState extends State<StudioPage> {
   }
 
   Future<String?> _readApiKey() async {
-    // 通过 SettingsRepository 读取（不进入 Widget 状态，不回显，仅用于调用）。
+    // 通过 AppState 门面读取（不进入 Widget 状态，不回显，仅用于调用）。
     final state = context.read<AppState>();
-    if (await state.settings.hasApiKey()) {
-      return await state.settings.readApiKeyForCall();
-    }
-    return null;
+    return await state.readApiKeyForCall();
   }
 
   Future<bool?> _confirmDisclosureAndKey(
@@ -196,9 +191,10 @@ class _StudioPageState extends State<StudioPage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final allEntries = context.select((AppState s) => s.allEntries);
+    final artifacts = context.select((AppState s) => s.artifacts);
     final theme = Theme.of(context);
-    final visible = _visible(state);
+    final visible = _visible(allEntries);
     final content = ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
@@ -220,20 +216,20 @@ class _StudioPageState extends State<StudioPage> {
             children: [
               Expanded(
                 child: Text(
-                  '选择证据（${_chosen(state).length}/${state.allEntries.length}）',
+                  '选择证据（${_chosen(allEntries).length}/${allEntries.length}）',
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
-              if (state.allEntries.isNotEmpty)
+              if (allEntries.isNotEmpty)
                 TextButton(
-                  onPressed: () => _toggleSelectAll(state),
-                  child: Text(_allVisibleSelected(state) ? '全不选' : '全选'),
+                  onPressed: () => _toggleSelectAll(allEntries),
+                  child: Text(_allVisibleSelected(allEntries) ? '全不选' : '全选'),
                 ),
             ],
           ),
           const SizedBox(height: 8),
-          if (state.allEntries.isEmpty)
+          if (allEntries.isEmpty)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -306,12 +302,12 @@ class _StudioPageState extends State<StudioPage> {
             onTap: () => _generate(ArtifactType.interview),
           ),
           const SizedBox(height: 24),
-          if (state.artifacts.isNotEmpty) ...[
+          if (artifacts.isNotEmpty) ...[
             Text('已保存产物',
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            ...state.artifacts.map((a) => _ArtifactTile(
+            ...artifacts.map((a) => _ArtifactTile(
                   artifact: a,
                   onTap: () => _open(a.id),
                 )),

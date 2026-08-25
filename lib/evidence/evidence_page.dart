@@ -80,9 +80,10 @@ class _EvidencePageState extends State<EvidencePage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final allEntries = context.select((AppState s) => s.allEntries);
+    final metrics = context.select((AppState s) => s.metrics);
     final theme = Theme.of(context);
-    final list = _apply(state.allEntries);
+    final list = _apply(allEntries);
 
     return SafeArea(
       child: ListView(
@@ -91,7 +92,7 @@ class _EvidencePageState extends State<EvidencePage> {
           Row(
             children: [
               Expanded(
-                child: Text('共 ${state.allEntries.length} 条',
+                child: Text('共 ${allEntries.length} 条',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.secondary)),
               ),
@@ -104,7 +105,7 @@ class _EvidencePageState extends State<EvidencePage> {
           ),
           const SizedBox(height: 16),
           // 图谱。
-          EvidenceGraph(metrics: state.metrics),
+          EvidenceGraph(metrics: metrics),
           const SizedBox(height: 20),
           // 搜索 + 筛选。
           TextField(
@@ -140,7 +141,7 @@ class _EvidencePageState extends State<EvidencePage> {
           const SizedBox(height: 16),
           if (list.isEmpty)
             _EmptyState(
-                hasEntries: state.allEntries.isNotEmpty,
+                hasEntries: allEntries.isNotEmpty,
                 query: _query)
           else
             ...list.map((e) => _EntryCard(entry: e)),

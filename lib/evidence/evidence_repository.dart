@@ -12,6 +12,17 @@ abstract class EvidenceRepository {
   Future<void> saveAnswer(EvidenceAnswer a);
   Future<void> deleteForEntry(String entryId);
   Future<List<EvidenceQuestion>> openQuestionsFor(String entryId);
+
+  /// 全量读取 Question 集合（按创建时间升序）。
+  Future<List<EvidenceQuestion>> listQuestions();
+
+  /// 全量读取 Answer 集合（按创建时间升序）。
+  Future<List<EvidenceAnswer>> listAnswers();
+
+  /// 一次读取并按 Entry 分组多个 Entry 的问题（每组按创建时间升序）。
+  Future<Map<String, List<EvidenceQuestion>>> questionsByEntryIds(
+    Iterable<String> entryIds,
+  );
 }
 
 class LocalEvidenceRepository implements EvidenceRepository {
@@ -91,5 +102,37 @@ class LocalEvidenceRepository implements EvidenceRepository {
             q.status == QuestionStatus.pending ||
             q.status == QuestionStatus.later)
         .toList();
+  }
+
+  @override
+  Future<List<EvidenceQuestion>> listQuestions() async {
+    await _ensure();
+    return List.of(_qs)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  @override
+  Future<List<EvidenceAnswer>> listAnswers() async {
+    await _ensure();
+    return List.of(_as)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  @override
+  Future<Map<String, List<EvidenceQuestion>>> questionsByEntryIds(
+    Iterable<String> entryIds,
+  ) async {
+    await _ensure();
+    final ids = entryIds.toSet();
+    if (ids.isEmpty) return <String, List<EvidenceQuestion>>{};
+    final grouped = <String, List<EvidenceQuestion>>{};
+    for (final q in _qs) {
+      if (!ids.contains(q.entryId)) continue;
+      grouped.putIfAbsent(q.entryId, () => []).add(q);
+    }
+    for (final qs in grouped.values) {
+      qs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+    return grouped;
   }
 }

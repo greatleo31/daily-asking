@@ -36,7 +36,8 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final state = context.watch<AppState>();
+    final aiReady = context.select((AppState s) => s.aiReady);
+    final llmSettings = context.select((AppState s) => s.llmSettings);
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -78,8 +79,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   color: theme.colorScheme.secondary),
               title: const Text('供应商配置'),
               subtitle: Text(
-                state.aiReady
-                    ? '已配置 · ${state.llmSettings.provider}'
+                aiReady
+                    ? '已配置 · ${llmSettings.provider}'
                     : '未配置',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.secondary),
@@ -92,29 +93,29 @@ class _SettingsPageState extends State<SettingsPage> {
                     Icon(
                       Icons.check_circle_outline,
                       size: 18,
-                      color: state.aiReady
+                      color: aiReady
                           ? theme.colorScheme.primary
                           : theme.colorScheme.outline,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      state.aiReady ? '已配置' : '未配置',
+                      aiReady ? '已配置' : '未配置',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                          color: state.aiReady
+                          color: aiReady
                               ? theme.colorScheme.primary
                               : theme.colorScheme.outline),
                     ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => _configureAi(context),
-                      child: Text(state.aiReady ? '修改' : '配置'),
+                      child: Text(aiReady ? '修改' : '配置'),
                     ),
                   ],
                 ),
-                if (state.aiReady) ...[
+                if (aiReady) ...[
                   const SizedBox(height: 8),
                   Text(
-                    '服务商：${state.llmSettings.provider} · 模型：${state.llmSettings.model}',
+                    '服务商：${llmSettings.provider} · 模型：${llmSettings.model}',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.secondary),
                   ),
@@ -171,8 +172,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _clearAi() async {
     final state = context.read<AppState>();
-    await state.settings.clearLlm();
-    await state.reload();
+    await state.clearLlmSettings();
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('已清除 AI 配置')));
@@ -203,7 +203,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
 
   Future<void> _load() async {
     final state = context.read<AppState>();
-    final s = await state.settings.readLlmSettings();
+    final s = await state.readLlmSettings();
     if (!mounted) return;
     _provider.text = s.provider;
     _baseUrl.text = s.baseUrl;
@@ -232,8 +232,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
     );
     final key =
         _apiKey.text.trim().isEmpty ? null : _apiKey.text.trim();
-    await state.settings.writeLlmSettings(settings, apiKey: key);
-    await state.reload();
+    await state.saveLlmSettings(settings, apiKey: key);
     if (!mounted) return;
     setState(() => _busy = false);
     Navigator.of(context).pop();

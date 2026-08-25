@@ -40,7 +40,7 @@ class _ArtifactViewPageState extends State<ArtifactViewPage> {
   }
 
   Future<Artifact?> _load() =>
-      context.read<AppState>().artifactRepo.find(widget.artifactId);
+      context.read<AppState>().findArtifact(widget.artifactId);
 
   Future<void> _saveEdited(Artifact a) async {
     await context.read<AppState>().updateArtifact(a);

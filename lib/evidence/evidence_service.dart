@@ -30,6 +30,16 @@ class GraphMetrics {
   final int contributionCount; // 已记录"个人贡献"的次数
 }
 
+/// 一次证据域刷新的聚合结果：图谱指标 + 各 Entry 的开放问题分组。
+///
+/// 两者由同一次批量 Question 读取产出，供 [AppState] 刷新证据快照使用。
+class EvidenceView {
+  EvidenceView({required this.metrics, required this.openByEntry});
+
+  final GraphMetrics metrics;
+  final Map<String, List<EvidenceQuestion>> openByEntry;
+}
+
 class EvidenceService {
   EvidenceService(this._entries, this._evidence);
 
@@ -51,14 +61,16 @@ class EvidenceService {
 
   /// 回答一个追问：更新回答内容，并回填到对应 entry 字段。
   Future<void> answerQuestion(String questionId, String content) async {
-    final qs = await _allQuestions();
-    late EvidenceQuestion q;
+    final qs = await _evidence.listQuestions();
+    EvidenceQuestion? q;
     for (final x in qs) {
       if (x.id == questionId) {
         q = x;
         break;
       }
     }
+    if (q == null) return; // 未知追问：不做任何写入。
+
     final answer = EvidenceAnswer(
       id: genId(prefix: 'a_'),
       questionId: questionId,
@@ -104,7 +116,7 @@ class EvidenceService {
 
   /// 更新追问状态（稍后 / 跳过）。
   Future<void> setQuestionStatus(String questionId, QuestionStatus status) async {
-    final qs = await _allQuestions();
+    final qs = await _evidence.listQuestions();
     for (final q in qs) {
       if (q.id == questionId) {
         q.status = status;
@@ -113,15 +125,6 @@ class EvidenceService {
         return;
       }
     }
-  }
-
-  Future<List<EvidenceQuestion>> _allQuestions() async {
-    final entries = await _entries.list();
-    final out = <EvidenceQuestion>[];
-    for (final e in entries) {
-      out.addAll(await _evidence.questionsFor(e.id));
-    }
-    return out;
   }
 
   /// 某 entry 的待补充（pending/later）问题。
@@ -140,9 +143,21 @@ class EvidenceService {
     await _evidence.deleteForEntry(entryId);
   }
 
+  /// 批量刷新证据域：一次读取 Question 集合，同时产出图谱指标与
+  /// 各 Entry 的开放问题分组，避免按 Entry 重复扫描。
+  Future<EvidenceView> refreshView(List<Entry> entries) async {
+    final qs = await _evidence.listQuestions();
+    return EvidenceView(
+      metrics: _buildMetrics(entries, qs),
+      openByEntry: _buildOpenByEntry(entries, qs),
+    );
+  }
+
   /// 计算图谱指标。
-  Future<GraphMetrics> metrics() async {
-    final entries = await _entries.list();
+  Future<GraphMetrics> metrics() async =>
+      (await refreshView(await _entries.list())).metrics;
+
+  GraphMetrics _buildMetrics(List<Entry> entries, List<EvidenceQuestion> qs) {
     if (entries.isEmpty) {
       return GraphMetrics(
         totalEntries: 0,
@@ -171,7 +186,6 @@ class EvidenceService {
     }
 
     // 最近 14 天内有记录的 entry 中，是否含"个人贡献"回答。
-    final qs = await _allQuestions();
     var open = 0;
     for (final q in qs) {
       if (q.status == QuestionStatus.pending ||
@@ -194,5 +208,28 @@ class EvidenceService {
       openQuestionCount: open,
       contributionCount: contributionCount,
     );
+  }
+
+  /// 按 Entry 分组开放问题（pending/later）；每个 entry 键都存在，
+  /// 无开放问题时为空列表。排序与 [openQuestionsForEntry] 一致。
+  Map<String, List<EvidenceQuestion>> _buildOpenByEntry(
+    List<Entry> entries,
+    List<EvidenceQuestion> qs,
+  ) {
+    final byEntry = <String, List<EvidenceQuestion>>{
+      for (final e in entries) e.id: <EvidenceQuestion>[],
+    };
+    for (final q in qs) {
+      final list = byEntry[q.entryId];
+      if (list == null) continue; // 孤立问题不进入任何 entry 分组。
+      if (q.status == QuestionStatus.pending ||
+          q.status == QuestionStatus.later) {
+        list.add(q);
+      }
+    }
+    for (final list in byEntry.values) {
+      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+    return byEntry;
   }
 }

@@ -30,7 +30,7 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
 
   Future<Entry?> _load() async {
     final state = context.read<AppState>();
-    final e = await state.entries.find(widget.entryId);
+    final e = await state.findEntry(widget.entryId);
     _questions = await state.questionsFor(widget.entryId);
     return e;
   }

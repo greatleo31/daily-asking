@@ -62,7 +62,6 @@ class _TodayPageState extends State<TodayPage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
     final theme = Theme.of(context);
     return SafeArea(
       child: ListView(
@@ -112,7 +111,7 @@ class _TodayPageState extends State<TodayPage> {
             ),
           ),
           const SizedBox(height: 24),
-          _TodayOverview(state: state),
+          const _TodayOverview(),
         ],
       ),
     );
@@ -120,13 +119,14 @@ class _TodayPageState extends State<TodayPage> {
 }
 
 class _TodayOverview extends StatelessWidget {
-  const _TodayOverview({required this.state});
-  final AppState state;
+  const _TodayOverview();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final list = state.todayEntries;
+    final list = context.select((AppState s) => s.todayEntries);
+    final count = context.select((AppState s) => s.todayCount);
+    final lastFeedback = context.select((AppState s) => s.lastFeedbackLabel);
     if (list.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -160,7 +160,7 @@ class _TodayOverview extends StatelessWidget {
         Row(
           children: [
             _StatCard(
-              value: '${state.todayCount}',
+              value: '$count',
               label: '条证据',
               color: theme.colorScheme.primary,
             ),
@@ -173,7 +173,7 @@ class _TodayOverview extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  state.lastFeedbackLabel ?? '',
+                  lastFeedback ?? '',
                   style: theme.textTheme.bodySmall,
                 ),
               ),

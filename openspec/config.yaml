@@ -1,0 +1,43 @@
+schema: spec-driven
+
+# Project context (shown to AI when creating artifacts)
+context: |
+  Project: 晨昏证据图谱 (Daily Asking) - 本地优先的职场证据成长助手 (Flutter 移动应用)
+  Tech stack: Flutter 3.44+ / Dart 3.12+ / Provider (state) / SharedPreferences (storage) / flutter_secure_storage (BYOK keys) / Android 目标平台
+  Architecture: 单页应用，Repository/Service 抽象 + AppState (ChangeNotifier, Provider 注入)
+  Modules:
+    - lib/core/      领域模型 (Entry/EvidenceQuestion/EvidenceAnswer/Artifact)、StorageService 抽象、llm_client (OpenAI 兼容, 最小字段出站)
+    - lib/journal/   今日记录页
+    - lib/evidence/  证据记录、question_engine (本地追问规则引擎, 纯业务规则无 UI 依赖)
+    - lib/artifacts/ 工作室 (产物生成: resume/weekly/interview)
+    - lib/settings/  BYOK 配置、settings_repository、secure_key_store (加密存储)
+    - lib/updater/   版本检查与更新 (update_service/update_info/update_prefs)
+    - lib/app/       应用壳 AppShell、AppState、theme
+  Conventions:
+    - 本地优先：所有业务数据经 StorageService 持久化 (当前 SharedPreferences JSON，可替换 SQLite/Drift)
+    - 隐私默认：无账号/登录/遥测；日志不记录 API Key、记录正文、提示词全文
+    - BYOK 最小字段：真实 AI 调用前必须 OutboundPayload.toDisclosure 展示出站披露并获确认
+    - API Key 只进 flutter_secure_storage；旧明文 Key 启动时自动迁移
+    - 版本单一来源 lib/core/version.dart (与 pubspec.yaml 同步，scripts/bump-version.sh 维护)
+    - question_engine 规则：按缺失字段追问 (result/context/action/blocker/个人贡献)，每次保存最多一个问题，skip 不立即重复
+  Quality gates:
+    - flutter analyze   # 必须 0 issue
+    - flutter test      # 必须全绿 (test/ 目录，单测：llm_client/update_info/version_mapping/widget/data serialization)
+    - flutter build apk --release
+  Language: 代码与提交信息使用英文；文档与 README 含中文。
+
+rules:
+  proposal:
+    - 每个 change 必须说明为何需要、范围、非目标 (non-goals)
+    - 涉及 UI 的 change 注明对应页面 (今日/证据/工作室/设置)
+    - 涉及隐私/BYOK/出站披露的 change 必须显式列出披露与安全约束
+  specs:
+    - 规范描述可观察行为与契约，不写实现细节
+    - 领域术语与模型字段 (Entry/EvidenceQuestion/Artifact) 保持一致命名
+  design:
+    - 遵循现有分层：UI -> AppState(Provider) -> 领域层 -> StorageService
+    - 优先复用现有模式 (Repository/Service 抽象、question_engine 纯逻辑可测)
+    - 存储格式变更需说明迁移路径 (参考旧明文 Key 迁移先例)
+  tasks:
+    - 每个任务可独立验证；测试任务与实现任务成对出现
+    - 涉及存储/加密/网络的任务附带对应单测
