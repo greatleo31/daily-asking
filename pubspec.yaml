@@ -31,3 +31,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/companion/day_01.png
+    - assets/companion/day_07.png
+    - assets/companion/day_14.png
+    - assets/companion/day_30.png
