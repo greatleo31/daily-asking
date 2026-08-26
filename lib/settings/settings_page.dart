@@ -38,6 +38,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final theme = Theme.of(context);
     final aiReady = context.select((AppState s) => s.aiReady);
     final llmSettings = context.select((AppState s) => s.llmSettings);
+    final companion = context.select((AppState s) => s.companion);
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -67,6 +68,39 @@ class _SettingsPageState extends State<SettingsPage> {
                         .updateService
                         .setAutoUpdateEnabled(v);
                   },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 伙伴组（可折叠）：伙伴资料概览与独立重置。
+          Card(
+            child: ExpansionTile(
+              leading: Icon(Icons.spa_outlined,
+                  color: theme.colorScheme.secondary),
+              title: const Text('伙伴'),
+              subtitle: Text(
+                companion.growthDays == 0
+                    ? '尚未开始成长'
+                    : '${companion.name ?? '晨昏伙伴'} · 累计 ${companion.growthDays} 天',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.secondary),
+              ),
+              initiallyExpanded: true,
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.restart_alt,
+                      color: Color(0xFFB8452F)),
+                  title: const Text('重置伙伴成长'),
+                  subtitle: Text(
+                    '清空名称、累计成长日与节点状态；不删除任何证据记录',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.secondary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _confirmResetCompanion,
                 ),
               ],
             ),
@@ -176,6 +210,37 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('已清除 AI 配置')));
+  }
+
+  /// 重置伙伴成长：要求明确二次确认后才执行；只清伙伴资料，证据不受影响。
+  Future<void> _confirmResetCompanion() async {
+    final state = context.read<AppState>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重置伙伴成长？'),
+        content: const Text('将清空伙伴名称、累计成长日与节点状态。\n\n已有证据记录不会被删除，且不受任何影响。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB8452F),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认重置'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await state.resetCompanion();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('伙伴已重置，证据记录保持不变')),
+    );
   }
 }
 

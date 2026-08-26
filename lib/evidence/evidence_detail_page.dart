@@ -48,12 +48,36 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
   }
 
   Future<void> _edit(BuildContext context, Entry e) async {
+    // 捕获 messenger，避免在 await 之后使用 BuildContext（跨 async gap）。
+    final messenger = ScaffoldMessenger.of(context);
     final result = await Navigator.of(context).push<Entry>(
       MaterialPageRoute(builder: (_) => EntryEditPage(entry: e)),
     );
     if (result != null && mounted) {
-      await this.context.read<AppState>().updateEntry(result);
-      setState(() => _load());
+      try {
+        await this.context.read<AppState>().updateEntry(result);
+      } on SaveRollbackIncomplete {
+        // 写入失败且回滚未完成：状态不确定，不得提示可重试。
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('保存状态不确定，请先刷新确认，暂不要重复提交')),
+          );
+        }
+      } on SaveSucceededButRefreshFailed {
+        // 更新已落盘但刷新失败：提示真实状态，下次进入时恢复。
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('已保存，但界面刷新失败，请稍后刷新查看')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('保存失败，请稍后重试')),
+          );
+        }
+      }
+      if (mounted) setState(() => _load());
     }
   }
 

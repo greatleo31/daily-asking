@@ -15,6 +15,9 @@
 - 本地追问引擎是纯业务规则（无 UI 依赖），可单测。How to apply: 新追问逻辑放 question_engine，保持可测。
 - 保持 Provider + 单一 AppState 门面：跨 Entry/Question/Answer 操作需要单一一致性刷新边界，不为“架构整洁”拆成互相协调的 FeatureController。Why: 避免跨 Controller 状态同步复杂度。How to apply: 只有测量证明 AppState 或重建成本仍不可控时才拆分。
 - 证据聚合使用一次 Question 集合读取并按 Entry 分组；当前存储 key 已按 `entries_v1/questions_v1/answers_v1/artifacts_v1` 分区，不要重复设计“分区 key”。Why: 消除真实 O(E×Q) 查询放大。How to apply: 新证据聚合复用批量路径。
+- UI 优化必须保留人的深度参与：用户先提出具体优化点、目标和取舍，助手不得自行决定整套改版、自动创建无明确范围的 PR 或连续批量改动。Why: 视觉与产品判断属于核心决策。How to apply: 先逐点讨论并确认，再按单点实现、验证和更新 PR。
+- 伙伴视觉原型已确认为“种子生物开花”四阶段：小芽、花苞、白花、粉花加蜜蜂。主体保持同一软质圆润生物，成长主要通过头顶植物状态和陪伴性小物件表达。Why: 用户已确认该图为伙伴原型。How to apply: 先按此原型拆分四阶段素材并确认透明背景、尺寸、锚点，再进入 Flutter 动态实现；不要擅自替换为其他生物或画风。
+- 用户已提供四张完整独立伙伴图，可采用“整图状态切换”而非分层素材：小芽、花苞、白花、粉花加蜜蜂。前端第一版使用四张静态素材，通过淡入淡出、轻微舒展/呼吸和保存成功后的状态切换表达成长。Why: 用户明确只能提供完整单独图片。How to apply: 不要求用户重新拆分身体与植物层；实现前先统一画布、底部基线和显示尺寸。
 
 ## Implementation References
 
