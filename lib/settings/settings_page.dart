@@ -95,7 +95,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       color: Color(0xFFB8452F)),
                   title: const Text('重置伙伴成长'),
                   subtitle: Text(
-                    '清空名称、累计成长日与节点状态；不删除任何证据记录',
+                    '清空名称、累计成长日与节点状态；不删除任何记录',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.secondary),
                   ),
@@ -177,14 +177,14 @@ class _SettingsPageState extends State<SettingsPage> {
               leading:
                   Icon(Icons.info_outline, color: theme.colorScheme.secondary),
               title: const Text('关于'),
-              subtitle: Text('版本 v$kAppVersionName · 晨昏证据图谱'),
+              subtitle: Text('版本 v$kAppVersionName · 留痕'),
               initiallyExpanded: true,
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.fingerprint),
-                  title: const Text('关于晨昏证据图谱'),
+                  title: const Text('关于留痕'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const AboutPage()),
@@ -219,7 +219,7 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('重置伙伴成长？'),
-        content: const Text('将清空伙伴名称、累计成长日与节点状态。\n\n已有证据记录不会被删除，且不受任何影响。'),
+        content: const Text('将清空伙伴名称、累计成长日与节点状态。\n\n已有记录不会被删除，且不受任何影响。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -239,7 +239,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await state.resetCompanion();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('伙伴已重置，证据记录保持不变')),
+      const SnackBar(content: Text('伙伴已重置，记录保持不变')),
     );
   }
 }
@@ -318,7 +318,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('仅用于把选中的证据整理成简历 / 周报 / 面试卡。Key 只保存在本机，页面不回显。',
+          Text('仅用于把选中的记录整理成简历 / 周报 / 面试卡。Key 只保存在本机，页面不回显。',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.secondary)),
           const SizedBox(height: 16),
@@ -358,7 +358,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
               style: theme.textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text('· 仅当你在「工作室」开启 AI 并选择证据后，才会发起真实调用。',
+          Text('· 仅当你在「工作室」开启 AI 并选择记录后，才会发起真实调用。',
               style: theme.textTheme.bodySmall),
           const SizedBox(height: 4),
           Text('· 每次调用前都会展示出站披露，确认后才发送。',

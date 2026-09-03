@@ -22,7 +22,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
 
-  static const _titles = ['今日', '证据', '工作室', '设置'];
+  static const _titles = ['今日', '记录', '工作室', '设置'];
 
   @override
   void initState() {
@@ -57,9 +57,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         } else if (await state.updateService.isAutoUpdateEnabled()) {
           final ok = await state.updateService.downloadAndInstall(info);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content:
-                  Text(ok ? '发现新版本 ${info.versionName}，已开始自动下载' : '更新下载失败，请重试')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                ok ? '发现新版本 ${info.versionName}，已开始自动下载' : '更新下载失败，请重试',
+              ),
+            ),
+          );
         }
       default:
         break; // NoUpdate / 失败：启动检查静默。
@@ -77,19 +81,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           title: Text('需要更新到 ${info.versionName}'),
           content: SingleChildScrollView(
             child: Text(
-              info.changelog.isNotEmpty
-                  ? info.changelog
-                  : '当前版本需要更新后才能继续使用。',
+              info.changelog.isNotEmpty ? info.changelog : '当前版本需要更新后才能继续使用。',
               style: Theme.of(ctx).textTheme.bodyMedium,
             ),
           ),
           actions: [
             FilledButton(
               onPressed: () async {
-                await context
-                    .read<AppState>()
-                    .updateService
-                    .downloadAndInstall(info);
+                await context.read<AppState>().updateService.downloadAndInstall(
+                  info,
+                );
               },
               child: const Text('立即更新'),
             ),
@@ -103,7 +104,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final state = context.read<AppState>();
     final dark = Theme.of(context).brightness == Brightness.dark;
     await state.setTheme(
-        dark ? ThemeModePreference.light : ThemeModePreference.dark);
+      dark ? ThemeModePreference.light : ThemeModePreference.dark,
+    );
   }
 
   @override
@@ -120,7 +122,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           IconButton(
             tooltip: dark ? '切换亮色' : '切换深色',
             icon: Icon(
-                dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            ),
             onPressed: _toggleTheme,
           ),
         ],
@@ -150,7 +153,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           NavigationDestination(
             icon: Icon(Icons.hub_outlined, color: labelColor),
             selectedIcon: Icon(Icons.hub, color: style.primary),
-            label: '证据',
+            label: '记录',
           ),
           NavigationDestination(
             icon: Icon(Icons.auto_awesome_mosaic_outlined, color: labelColor),
@@ -167,4 +170,3 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     );
   }
 }
-

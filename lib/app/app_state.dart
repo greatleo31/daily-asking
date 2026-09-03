@@ -187,7 +187,7 @@ class AppState extends ChangeNotifier {
     if (gaps.isNotEmpty) {
       return '还有 ${gaps.length} 个待补充问题';
     }
-    return '今天已沉淀 ${_todayEntries.length} 条证据';
+    return '今天已沉淀 ${_todayEntries.length} 条记录';
   }
 
   Map<String, List<EvidenceQuestion>> _openByEntry = {};

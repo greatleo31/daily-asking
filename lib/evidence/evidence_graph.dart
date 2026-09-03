@@ -21,7 +21,7 @@ class EvidenceGraph extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('证据图谱',
+            Text('记录图谱',
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
@@ -32,7 +32,7 @@ class EvidenceGraph extends StatelessWidget {
                 _Metric(
                   color: theme.colorScheme.primary,
                   value: '${metrics.totalEntries}',
-                  label: '证据总数',
+                  label: '记录总数',
                 ),
                 const SizedBox(width: 10),
                 _Metric(

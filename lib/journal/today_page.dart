@@ -151,7 +151,7 @@ class _TodayPageState extends State<TodayPage> {
                   minLines: 2,
                   textInputAction: TextInputAction.newline,
                   decoration: const InputDecoration(
-                    hintText: '例如：给新入职的同事做了 SQL 培训，帮他跑通了周报脚本',
+                    hintText: '请输入精简概括',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -580,7 +580,6 @@ class _TodayOverview extends StatelessWidget {
     final theme = Theme.of(context);
     final list = context.select((AppState s) => s.todayEntries);
     final count = context.select((AppState s) => s.todayCount);
-    final lastFeedback = context.select((AppState s) => s.lastFeedbackLabel);
     if (list.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -593,11 +592,11 @@ class _TodayOverview extends StatelessWidget {
           children: [
             Icon(Icons.wb_twilight, color: theme.colorScheme.secondary),
             const SizedBox(height: 8),
-            Text('今天还没有沉淀证据',
+            Text('今天还没有沉淀记录',
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text('在上面记下第一件小事，你的证据图谱会从这里长出来。',
+            Text('在上面记下第一件小事，你的记录图谱会从这里长出来。',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.secondary)),
           ],
@@ -607,66 +606,14 @@ class _TodayOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('今日已沉淀',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _StatCard(
-              value: '$count',
-              label: '条证据',
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  lastFeedback ?? '',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          '今日已沉淀 $count 条记录',
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         ...list.take(5).map((e) => _TodayEntryTile(entry: e)),
       ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard(
-      {required this.value, required this.label, required this.color});
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: 96,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value,
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(color: color, fontWeight: FontWeight.w800)),
-          Text(label, style: theme.textTheme.labelSmall),
-        ],
-      ),
     );
   }
 }
@@ -678,26 +625,30 @@ class _TodayEntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final percent = entry.completenessPercent();
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         leading: CircleAvatar(
-          radius: 14,
+          radius: 24,
           backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-          child: Text(
-            '${entry.completenessPercent()}%',
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.primary),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$percent%',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ),
         title: Text(entry.task,
             maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          '完整度 ${entry.completenessPercent()}%',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.secondary),
-        ),
         trailing: Icon(Icons.chevron_right,
             color: theme.colorScheme.secondary),
         onTap: () => Navigator.of(context).push(
