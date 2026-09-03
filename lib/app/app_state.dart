@@ -389,17 +389,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 回答追问，并回填 entry 字段。
-  Future<void> answerQuestion(String questionId, String content) async {
-    await _evidenceService.answerQuestion(questionId, content);
+  /// 回答追问，并回填 entry 字段；返回立刻生成的下一问（若有）。
+  Future<EvidenceQuestion?> answerQuestion(
+      String questionId, String content) async {
+    final next = await _evidenceService.answerQuestion(questionId, content);
     await _refreshEvidence();
     notifyListeners();
+    return next;
   }
 
-  Future<void> setQuestionStatus(String questionId, QuestionStatus status) async {
-    await _evidenceService.setQuestionStatus(questionId, status);
+  /// 更新追问状态；跳过时返回立刻生成的下一问（若有）。
+  Future<EvidenceQuestion?> setQuestionStatus(
+      String questionId, QuestionStatus status) async {
+    final next =
+        await _evidenceService.setQuestionStatus(questionId, status);
     await _refreshEvidence();
     notifyListeners();
+    return next;
   }
 
   Future<List<EvidenceQuestion>> questionsFor(String entryId) =>

@@ -60,7 +60,8 @@ class EvidenceService {
   }
 
   /// 回答一个追问：更新回答内容，并回填到对应 entry 字段。
-  Future<void> answerQuestion(String questionId, String content) async {
+  /// 成功后立刻再生成下一问（若有），供今日页连续展示。
+  Future<EvidenceQuestion?> answerQuestion(String questionId, String content) async {
     final qs = await _evidence.listQuestions();
     EvidenceQuestion? q;
     for (final x in qs) {
@@ -69,7 +70,7 @@ class EvidenceService {
         break;
       }
     }
-    if (q == null) return; // 未知追问：不做任何写入。
+    if (q == null) return null; // 未知追问：不做任何写入。
 
     final answer = EvidenceAnswer(
       id: genId(prefix: 'a_'),
@@ -112,19 +113,37 @@ class EvidenceService {
     q.status = QuestionStatus.answered;
     q.updatedAt = DateTime.now();
     await _evidence.saveQuestion(q);
+    return await _generateNextForEntry(q.entryId);
   }
 
-  /// 更新追问状态（稍后 / 跳过）。
-  Future<void> setQuestionStatus(String questionId, QuestionStatus status) async {
+  /// 更新追问状态（跳过等）。跳过成功后立刻再生成下一问（若有）。
+  Future<EvidenceQuestion?> setQuestionStatus(
+      String questionId, QuestionStatus status) async {
     final qs = await _evidence.listQuestions();
     for (final q in qs) {
       if (q.id == questionId) {
         q.status = status;
         q.updatedAt = DateTime.now();
         await _evidence.saveQuestion(q);
-        return;
+        if (status == QuestionStatus.skip) {
+          return await _generateNextForEntry(q.entryId);
+        }
+        return null;
       }
     }
+    return null;
+  }
+
+  /// 为指定 entry 再跑一轮引擎并持久化（最多一问）；无则 null。
+  Future<EvidenceQuestion?> _generateNextForEntry(String entryId) async {
+    final entry = await _entries.find(entryId);
+    if (entry == null) return null;
+    final existing = await _evidence.questionsFor(entryId);
+    final next = _engine.nextQuestion(entry: entry, existing: existing);
+    if (next != null) {
+      await _evidence.saveQuestion(next);
+    }
+    return next;
   }
 
   /// 某 entry 的待补充（pending/later）问题。

@@ -1,6 +1,7 @@
 /// 今日：快速记录一句话事实 → 保存 → 本地追问。
 ///
-/// 不允许因未回答追问而阻止保存；追问可回答 / 稍后 / 跳过。
+/// 不允许因未回答追问而阻止保存；追问可回答 / 跳过。
+/// 答或跳成功后在本页连续展示下一问（同时最多一卡），无剩余则停止。
 /// 顶部为本地晨昏伙伴主视觉：只读快照展示 + 点击展开成长卡；
 /// 保存成功后伙伴才成长并播放克制的舒展回应，失败保持原状。
 library;
@@ -85,15 +86,19 @@ class _TodayPageState extends State<TodayPage> {
 
   Future<void> _showQuestionDialog(
       BuildContext context, EvidenceQuestion q) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => QuestionCard(question: q),
-    );
+    EvidenceQuestion? current = q;
+    while (current != null && mounted) {
+      final next = await showModalBottomSheet<EvidenceQuestion?>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (_) => QuestionCard(question: current!),
+      );
+      current = next;
+    }
   }
 
   void _openGrowthCard() {

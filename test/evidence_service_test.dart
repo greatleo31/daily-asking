@@ -46,8 +46,18 @@ void main() {
         '补充难点',
         '我独立完成',
       ]);
+      // 回答后可能立刻再生成下一问；仅断言原 5 条均已回答。
+      final answeredIds = {
+        'q_result',
+        'q_context',
+        'q_action',
+        'q_blocker',
+        'q_contribution',
+      };
       expect(
-        evidence.questions.map((q) => q.status),
+        evidence.questions
+            .where((q) => answeredIds.contains(q.id))
+            .map((q) => q.status),
         everyElement(QuestionStatus.answered),
       );
     });
@@ -65,7 +75,10 @@ void main() {
       final saved = await entries.find(entry.id);
       expect(saved!.result, '原结果');
       expect(evidence.answers.single.content, '');
-      expect(evidence.questions.single.status, QuestionStatus.answered);
+      expect(
+        evidence.questions.firstWhere((q) => q.id == 'q_1').status,
+        QuestionStatus.answered,
+      );
     });
 
     test('未知 questionId 不写 Answer、Question 或 Entry', () async {
@@ -89,6 +102,94 @@ void main() {
     });
   });
 
+  group('EvidenceService 连续追问编排', () {
+    test('空记录首问为 context；skip 立刻返回 action；existing 含 skip context',
+        () async {
+      final entry = _entry(id: 'e_chain', task: '一件小事');
+      final entries = _MemoryEntryRepository([]);
+      final evidence = _RecordingEvidenceRepository();
+      final service = EvidenceService(entries, evidence);
+
+      final first = await service.saveEntryAndGenerateQuestion(entry);
+      expect(first, isNotNull);
+      expect(first!.kind, QuestionKind.context);
+
+      final next = await service.setQuestionStatus(first.id, QuestionStatus.skip);
+      expect(next, isNotNull);
+      expect(next!.kind, QuestionKind.action);
+
+      final existing = await service.questionsForEntry(entry.id);
+      expect(
+        existing.any((q) =>
+            q.kind == QuestionKind.context && q.status == QuestionStatus.skip),
+        isTrue,
+      );
+      expect(
+        existing.any((q) =>
+            q.kind == QuestionKind.action &&
+            q.status == QuestionStatus.pending),
+        isTrue,
+      );
+    });
+
+    test('连续 skip 直至无剩余返回 null', () async {
+      final entry = _entry(id: 'e_all', task: '一件小事');
+      final entries = _MemoryEntryRepository([]);
+      final evidence = _RecordingEvidenceRepository();
+      final service = EvidenceService(entries, evidence);
+
+      var current = await service.saveEntryAndGenerateQuestion(entry);
+      expect(current, isNotNull);
+
+      final kinds = <QuestionKind>[];
+      while (current != null) {
+        kinds.add(current.kind);
+        current =
+            await service.setQuestionStatus(current.id, QuestionStatus.skip);
+      }
+
+      expect(kinds, [
+        QuestionKind.context,
+        QuestionKind.action,
+        QuestionKind.result,
+        QuestionKind.blocker,
+        QuestionKind.contribution,
+      ]);
+      expect(current, isNull);
+    });
+
+    test('回答路径在字段仍空时也产出下一问', () async {
+      final entry = _entry(id: 'e_ans', task: '一件小事');
+      final entries = _MemoryEntryRepository([]);
+      final evidence = _RecordingEvidenceRepository();
+      final service = EvidenceService(entries, evidence);
+
+      final first = await service.saveEntryAndGenerateQuestion(entry);
+      expect(first!.kind, QuestionKind.context);
+
+      // 回答 context 会回填背景，下一问应为 action（其余字段仍空）。
+      final next = await service.answerQuestion(first.id, '客户现场培训');
+      expect(next, isNotNull);
+      expect(next!.kind, QuestionKind.action);
+
+      final saved = await entries.find(entry.id);
+      expect(saved!.context, '客户现场培训');
+    });
+
+    test('setQuestionStatus(later) 不触发连续下一问', () async {
+      final entry = _entry(id: 'e_later', task: '一件小事');
+      final entries = _MemoryEntryRepository([]);
+      final evidence = _RecordingEvidenceRepository();
+      final service = EvidenceService(entries, evidence);
+
+      final first = await service.saveEntryAndGenerateQuestion(entry);
+      final next =
+          await service.setQuestionStatus(first!.id, QuestionStatus.later);
+      expect(next, isNull);
+      expect(evidence.questions.where((q) => q.status == QuestionStatus.pending),
+          isEmpty);
+    });
+  });
   group('EvidenceService 级联与聚合', () {
     test('删除一个 Entry 只清理它的问题与答案', () async {
       final entries = _MemoryEntryRepository([
