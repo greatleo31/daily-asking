@@ -48,12 +48,36 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
   }
 
   Future<void> _edit(BuildContext context, Entry e) async {
+    // 捕获 messenger，避免在 await 之后使用 BuildContext（跨 async gap）。
+    final messenger = ScaffoldMessenger.of(context);
     final result = await Navigator.of(context).push<Entry>(
       MaterialPageRoute(builder: (_) => EntryEditPage(entry: e)),
     );
     if (result != null && mounted) {
-      await this.context.read<AppState>().updateEntry(result);
-      setState(() => _load());
+      try {
+        await this.context.read<AppState>().updateEntry(result);
+      } on SaveRollbackIncomplete {
+        // 写入失败且回滚未完成：状态不确定，不得提示可重试。
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('保存状态不确定，请先刷新确认，暂不要重复提交')),
+          );
+        }
+      } on SaveSucceededButRefreshFailed {
+        // 更新已落盘但刷新失败：提示真实状态，下次进入时恢复。
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('已保存，但界面刷新失败，请稍后刷新查看')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('保存失败，请稍后重试')),
+          );
+        }
+      }
+      if (mounted) setState(() => _load());
     }
   }
 
@@ -61,7 +85,7 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除这条证据？'),
+        title: const Text('删除这条记录？'),
         content: const Text('删除后其追问与回答也会一并移除，且无法恢复。'),
         actions: [
           TextButton(
@@ -100,7 +124,7 @@ class _EvidenceDetailPageState extends State<EvidenceDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('证据详情')),
+      appBar: AppBar(title: const Text('记录详情')),
       body: FutureBuilder<Entry?>(
         future: _future,
         builder: (context, snap) {
@@ -250,27 +274,48 @@ class _QuestionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final done = q.status == QuestionStatus.answered;
     final skipped = q.status == QuestionStatus.skip;
+
+    final String statusText;
+    final Color? statusFg;
+    final Color? statusBg;
+    final Color? statusBorder;
+    if (done) {
+      statusText = '已答';
+      statusFg = theme.colorScheme.onPrimary;
+      statusBg = theme.colorScheme.primary;
+      statusBorder = null;
+    } else if (skipped) {
+      statusText = '已跳过';
+      statusFg = theme.colorScheme.secondary;
+      statusBg = null;
+      statusBorder = theme.colorScheme.outline;
+    } else {
+      statusText = '待补充';
+      statusFg = theme.colorScheme.onError;
+      statusBg = theme.colorScheme.error;
+      statusBorder = null;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(
-          done
-              ? Icons.check_circle
-              : skipped
-                  ? Icons.remove_circle_outline
-                  : Icons.help_outline,
-          color: done
-              ? theme.colorScheme.primary
-              : skipped
-                  ? theme.colorScheme.outline
-                  : theme.colorScheme.tertiary,
-        ),
-        title: Text(q.prompt),
-        subtitle: Text(
-          '${q.kind.label} · '
-          '${done ? "已答" : skipped ? "已跳过" : "待补充"}',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.secondary),
+        title: Text(q.kind.label),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: statusBg,
+            border: statusBorder == null
+                ? null
+                : Border.all(color: statusBorder),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            statusText,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: statusFg,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         onTap: done || skipped ? null : onAnswer,
       ),
@@ -337,7 +382,7 @@ class _EntryEditPageState extends State<EntryEditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑证据'),
+        title: const Text('编辑记录'),
         actions: [
           TextButton(onPressed: _save, child: const Text('保存')),
         ],

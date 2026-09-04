@@ -1,4 +1,4 @@
-// 冒烟测试：验证核心领域模型序列化与本地追问规则。
+﻿// 冒烟测试：验证核心领域模型序列化与本地追问规则。
 import 'package:daily_asking/core/models.dart';
 import 'package:daily_asking/evidence/question_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,7 +23,7 @@ void main() {
     expect(back.completenessPercent(), 100);
   });
 
-  test('本地追问：result 为空时优先问结果', () {
+  test('本地追问：背景与行动已填且 result 为空时问结果', () {
     final entry = Entry(
       id: 'e_2',
       date: DateTime(2026, 8, 11),
@@ -49,12 +49,13 @@ void main() {
     );
     final engine = QuestionEngine();
     final q1 = engine.nextQuestion(entry: empty, existing: [])!;
-    expect(q1.kind, QuestionKind.result);
+    expect(q1.kind, QuestionKind.context);
 
-    // 用户跳过结果问题后，下一次不应再问同一个。
+    // 用户跳过背景问题后，下一次不应再问同一个。
     q1.status = QuestionStatus.skip;
     final q2 = engine.nextQuestion(entry: empty, existing: [q1]);
     expect(q2, isNotNull);
-    expect(q2!.kind, isNot(QuestionKind.result));
+    expect(q2!.kind, isNot(QuestionKind.context));
+    expect(q2.kind, QuestionKind.action);
   });
 }

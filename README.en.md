@@ -1,4 +1,4 @@
-# Daily Asking (晨昏证据图谱)
+# Daily Asking (留痕)
 
 > A local-first workplace evidence growth companion: record one real thing every day, turn traces into evidence, and turn evidence into outcomes.
 

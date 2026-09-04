@@ -17,45 +17,29 @@ import '../models.dart';
 import '../../settings/settings_repository.dart';
 import 'prompts.dart';
 
-/// 一次出站调用的最小载荷：只包含选中的证据字段，用于披露与发送。
+/// 一次出站调用的最小载荷：只包含选中的记录字段，用于披露与发送。
 class OutboundPayload {
-  OutboundPayload({
-    required this.entries,
-    required this.artifactType,
-  });
+  OutboundPayload({required this.entries, required this.artifactType});
 
   final List<Entry> entries;
   final ArtifactType artifactType;
 
-  /// 出站披露文本：服务商/模型/路径/将发送的字段范围。
-  String toDisclosure(LlmSettings settings) {
-    final b = StringBuffer();
-    b.writeln('即将调用真实 AI 服务，请确认以下出站内容：');
-    b.writeln('· 服务商：${settings.provider}');
-    b.writeln('· 模型：${settings.model}');
-    b.writeln('· 路径：${settings.baseUrl}');
-    b.writeln('· 请求头：仅携带 API Key（Authorization），不含其它隐私');
-    b.writeln('· 将发送的字段：');
-    for (var i = 0; i < entries.length; i++) {
-      final e = entries[i];
-      b.writeln('   #${i + 1} ${e.task.trim()}');
-      b.writeln('     背景=${e.context.trim()} 行动=${e.action.trim()} '
-          '结果=${e.result.trim()} 难点=${e.blocker.trim()}');
-    }
-    b.writeln('· 不会发送：图谱统计数据、其它未选中记录、设置信息。');
-    return b.toString();
-  }
+  /// 出站确认只说明即将访问已配置的 AI 服务，不泄露实现细节。
+  String toDisclosure() => '将访问已配置的 AI 服务生成内容，是否确认？';
 
-  /// 组装发送给模型的系统提示词（不含正文全文，仅字段化摘要）。
+  /// 组装发送给模型的 Markdown-first 系统提示词。
   String buildSystemPrompt(ArtifactType type) => systemPromptFor(type);
 
-  /// 组装发送给模型的用户消息（仅字段化摘要，不含正文全文）。
-  String buildUserMessage() {
-    final b =
-        StringBuffer('请基于以下证据生成产物（字段为空 = 该条证据缺失该信息，请按提示词要求占位，不要编造）：\n');
-    for (var i = 0; i < entries.length; i++) {
-      final e = entries[i];
-      b.writeln('证据#${i + 1}:');
+  /// 组装发送给模型的用户消息（带稳定记录 id，便于结果回溯）。
+  String buildUserMessage({DateTime? referenceDate}) {
+    final date = referenceDate ?? DateTime.now();
+    final b = StringBuffer(
+      '请基于以下记录生成产物。当前参考日期：${date.toIso8601String().substring(0, 10)}。\n',
+    );
+    b.writeln('每条输出 item 的 evidenceRefs 必须使用下面的真实记录 id；不得使用序号。');
+    for (final e in entries) {
+      b.writeln('记录 id=${e.id}:');
+      b.writeln('  日期: ${e.date.toIso8601String().substring(0, 10)}');
       b.writeln('  任务: ${e.task.trim()}');
       b.writeln('  背景: ${e.context.trim()}');
       b.writeln('  行动: ${e.action.trim()}');
@@ -141,8 +125,7 @@ class OpenAiClient {
         if (resp.statusCode != 200) {
           return LlmResult(
             content: '',
-            error:
-                '请求失败（HTTP ${resp.statusCode}），请检查 Base URL / Key / 模型。',
+            error: '请求失败（HTTP ${resp.statusCode}），请检查 Base URL / Key / 模型。',
           );
         }
         return parseResponseBytes(resp.bodyBytes);
@@ -215,7 +198,9 @@ class OpenAiClient {
     // 部分网关 / responses 风格：从 message 平铺字段兜底。
     var fallback = extractText(decoded['message']);
     if (fallback == null && decoded['message'] is Map<String, dynamic>) {
-      fallback = extractText((decoded['message'] as Map<String, dynamic>)['content']);
+      fallback = extractText(
+        (decoded['message'] as Map<String, dynamic>)['content'],
+      );
     }
     if (fallback != null && fallback.trim().isNotEmpty) {
       return LlmResult(content: fallback.trim());
