@@ -17,18 +17,23 @@ import 'update_prefs.dart';
 
 /// 更新清单基址。
 ///
-/// 演示/开发默认 `http://127.0.0.1:8090`（配合 `adb reverse tcp:8090 tcp:8090`，
-/// 见 `android/app/src/main/res/xml/network_security_config.xml` 放行的明文域）。
-/// 生产环境用 `--dart-define=UPDATE_BASE_URL=https://update.<domain>` 注入 HTTPS 地址。
-const kUpdateBaseUrl = String.fromEnvironment('UPDATE_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8090');
+/// 默认不配置，避免正式构建误请求开发机 localhost。生产或演示构建必须通过
+/// `--dart-define=UPDATE_BASE_URL=https://update.<domain>` 显式注入。
+const kUpdateBaseUrl = String.fromEnvironment(
+  'UPDATE_BASE_URL',
+  defaultValue: '',
+);
 
 /// 更新服务。
 class UpdateService {
-  UpdateService(this._prefs, {http.Client? client}) : _client = client ?? http.Client();
+  UpdateService(this._prefs, {http.Client? client, String? baseUrl})
+    : _client = client ?? http.Client(),
+      _baseUrl = (baseUrl ?? kUpdateBaseUrl).trim();
 
   final UpdatePrefs _prefs;
   final http.Client _client;
+  final String _baseUrl;
+  bool get isConfigured => _baseUrl.isNotEmpty;
 
   static const _channel = MethodChannel('com.dailyasking.daily_asking/update');
 
@@ -36,10 +41,11 @@ class UpdateService {
   static const _channelName = 'stable';
 
   String get latestJsonUrl =>
-      '$kUpdateBaseUrl/latest.json?platform=$_platform&channel=$_channelName&vc=$kAppVersionCode';
+      '$_baseUrl/latest.json?platform=$_platform&channel=$_channelName&vc=$kAppVersionCode';
 
-  /// 检查更新：请求 → 解析 → 比对 → 记录上次检查时间。
+  /// 检查更新：未配置更新源时直接返回，不发起网络请求。
   Future<UpdateDecision> check() async {
+    if (!isConfigured) return const UpdateCheckFailed('更新服务未配置');
     try {
       final resp = await _client
           .get(Uri.parse(latestJsonUrl))
@@ -48,14 +54,9 @@ class UpdateService {
         return UpdateCheckFailed('HTTP ${resp.statusCode}');
       }
       final info = UpdateInfo.parse(utf8.decode(resp.bodyBytes));
-      if (info == null) {
-        return const UpdateCheckFailed('清单解析失败');
-      }
+      if (info == null) return const UpdateCheckFailed('清单解析失败');
       await _prefs.setLastCheckedAt(DateTime.now());
-      // 服务端 versionCode <= 当前视为无更新（禁止降级）。
-      if (info.versionCode <= kAppVersionCode) {
-        return const NoUpdate();
-      }
+      if (info.versionCode <= kAppVersionCode) return const NoUpdate();
       return UpdateAvailable(info);
     } on Exception catch (e) {
       return UpdateCheckFailed(e.toString());

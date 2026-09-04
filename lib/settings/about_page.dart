@@ -29,8 +29,8 @@ class _AboutPageState extends State<AboutPage> {
     switch (decision) {
       case NoUpdate():
         _toast('已是最新版本');
-      case UpdateCheckFailed():
-        _toast('检查更新失败，请检查网络');
+      case UpdateCheckFailed(:final reason):
+        _toast(reason == '更新服务未配置' ? '更新服务未配置' : '检查更新失败，请稍后重试');
       case UpdateAvailable(:final info):
         if (info.mandatory) {
           await _showMandatoryUpdate(info);
@@ -42,8 +42,7 @@ class _AboutPageState extends State<AboutPage> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _startDownload(UpdateInfo info) async {
@@ -95,9 +94,7 @@ class _AboutPageState extends State<AboutPage> {
           title: Text('需要更新到 ${info.versionName}'),
           content: SingleChildScrollView(
             child: Text(
-              info.changelog.isNotEmpty
-                  ? info.changelog
-                  : '当前版本需要更新后才能继续使用。',
+              info.changelog.isNotEmpty ? info.changelog : '当前版本需要更新后才能继续使用。',
               style: Theme.of(ctx).textTheme.bodyMedium,
             ),
           ),
@@ -123,23 +120,35 @@ class _AboutPageState extends State<AboutPage> {
           Center(
             child: Column(
               children: [
-                Icon(Icons.wb_twilight,
-                    size: 48, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.wb_twilight,
+                  size: 48,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(height: 12),
-                Text('晨昏证据图谱',
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  '留痕',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('v$kAppVersionName ($kAppVersionCode)',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.secondary)),
+                Text(
+                  'v$kAppVersionName ($kAppVersionCode)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          Text('隐私边界',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            '隐私边界',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -156,9 +165,12 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('开源许可',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            '开源许可',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
@@ -168,9 +180,12 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('更新',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            '更新',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           Card(
             child: Column(
@@ -178,16 +193,18 @@ class _AboutPageState extends State<AboutPage> {
                 ListTile(
                   leading: const Icon(Icons.system_update_alt),
                   title: const Text('检查更新'),
-                  subtitle: _checking ? const Text('检查中…') : FutureBuilder<String>(
-                    future: _lastCheckedText(),
-                    builder: (context, snap) =>
-                        Text(snap.data ?? '从未检查'),
-                  ),
+                  subtitle: _checking
+                      ? const Text('检查中…')
+                      : FutureBuilder<String>(
+                          future: _lastCheckedText(),
+                          builder: (context, snap) => Text(snap.data ?? '从未检查'),
+                        ),
                   trailing: _checking
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.chevron_right),
                   onTap: _checkUpdate,
                 ),
@@ -217,9 +234,7 @@ class _AboutPageState extends State<AboutPage> {
         children: [
           Icon(Icons.check, size: 16, color: theme.colorScheme.secondary),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(text, style: theme.textTheme.bodySmall),
-          ),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
       ),
     );

@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_state.dart';
 import '../models.dart';
+import '../../artifacts/structured_artifact.dart';
 
 /// 导出文件名时间戳：`20260814-2140`。
 String _stamp(DateTime t) {
@@ -28,15 +29,14 @@ String allFileName(DateTime now) => 'daily-asking-all-${_stamp(now)}.md';
 String artifactFileName(Artifact a, DateTime now) =>
     '${a.type.label}-${_stamp(now)}.md';
 
-String _dateLabel(DateTime d) =>
-    '${d.year}年${d.month}月${d.day}日';
+String _dateLabel(DateTime d) => '${d.year}年${d.month}月${d.day}日';
 
 String _statusLabel(QuestionStatus s) => switch (s) {
-      QuestionStatus.pending => '待补充',
-      QuestionStatus.answered => '已答',
-      QuestionStatus.later => '稍后',
-      QuestionStatus.skip => '已跳过',
-    };
+  QuestionStatus.pending => '待补充',
+  QuestionStatus.answered => '已答',
+  QuestionStatus.later => '稍后',
+  QuestionStatus.skip => '已跳过',
+};
 
 /// 单条证据 → Markdown（纯函数，可测试）。
 String entryToMarkdown(
@@ -70,11 +70,18 @@ String entryToMarkdown(
     buf.writeln('### 追问与回答');
     for (final q in questions) {
       final as = answers[q.id] ?? const <EvidenceAnswer>[];
-      final answerText = as.map((a) => a.content.trim()).where((s) => s.isNotEmpty).join('；');
+      final answerText = as
+          .map((a) => a.content.trim())
+          .where((s) => s.isNotEmpty)
+          .join('；');
       if (answerText.isNotEmpty) {
-        buf.writeln('- 【${q.kind.label}】${q.prompt.trim()} → **已答**：$answerText');
+        buf.writeln(
+          '- 【${q.kind.label}】${q.prompt.trim()} → **已答**：$answerText',
+        );
       } else {
-        buf.writeln('- 【${q.kind.label}】${q.prompt.trim()}（${_statusLabel(q.status)}）');
+        buf.writeln(
+          '- 【${q.kind.label}】${q.prompt.trim()}（${_statusLabel(q.status)}）',
+        );
       }
     }
   }
@@ -88,9 +95,11 @@ String allEntriesToMarkdown(
   Map<String, Map<String, List<EvidenceAnswer>>> answersByQuestion,
 ) {
   final buf = StringBuffer();
-  buf.writeln('# 晨昏证据图谱 · 全部证据导出');
+  buf.writeln('# 留痕 · 全部证据导出');
   buf.writeln();
-  buf.writeln('> 导出时间：${_dateLabel(DateTime.now())}（${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}）');
+  buf.writeln(
+    '> 导出时间：${_dateLabel(DateTime.now())}（${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}）',
+  );
   buf.writeln('> 共 ${entries.length} 条证据');
   buf.writeln();
   for (var i = 0; i < entries.length; i++) {
@@ -106,17 +115,98 @@ String allEntriesToMarkdown(
   return buf.toString();
 }
 
+/// 将结构化结果转换成可读、可复制的 Markdown 正文。
+String structuredArtifactToMarkdown(StructuredArtifactDocument document) {
+  final buf = StringBuffer();
+  if (document.title != null) buf.writeln('# ${document.title}');
+  if (document.summary != null) {
+    buf.writeln();
+    buf.writeln(document.summary);
+  }
+  for (final section in document.sections) {
+    buf.writeln();
+    buf.writeln('## ${section.title}');
+    for (final item in section.items) {
+      buf.writeln('- ${item.text}');
+      if (item.evidenceRefs.isNotEmpty) {
+        buf.writeln('  - 依据：${item.evidenceRefs.join('、')}');
+      }
+      if (item.missingProof.isNotEmpty) {
+        buf.writeln('  - 待补充：${item.missingProof.join('、')}');
+      }
+      if (item.status == 'needs_verification') {
+        buf.writeln('  - 状态：需要人工核对');
+      }
+      for (final detail in item.details.entries) {
+        final value = detail.value;
+        if (value is String && value.trim().isNotEmpty) {
+          buf.writeln('  - ${detail.key}：${value.trim()}');
+        }
+      }
+    }
+  }
+  return buf.toString().trim();
+}
+
+StructuredArtifactDocument? _structuredDocumentFor(Artifact a) {
+  final raw = a.structuredContent;
+  if (raw == null || raw.trim().isEmpty) return null;
+  return parseStructuredArtifact(
+    raw,
+    expectedType: a.type,
+    allowedEvidenceRefs: a.sourceEntryIds.toSet(),
+  ).document;
+}
+
+/// 产物阅读器使用的 Markdown 来源。
+///
+/// 新产物直接使用 API Markdown 原文；历史 JSON 产物优先从保留的
+/// structuredContent 转换，升级不会删除或覆盖任何原始字段。
+String artifactMarkdownSource(Artifact artifact) {
+  final document = _structuredDocumentFor(artifact);
+  return document == null
+      ? artifact.content
+      : structuredArtifactToMarkdown(document);
+}
+
+/// 复制用正文：结构化产物复制可读 Markdown，旧产物复制原文。
+String artifactCopyText(Artifact a) => artifactMarkdownSource(a).trim();
+
 /// 单个产物 → Markdown（纯函数，可测试）。
 String artifactToMarkdown(Artifact a) {
   final buf = StringBuffer();
   buf.writeln('# ${a.type.label} · ${_dateLabel(a.updatedAt)}');
   buf.writeln();
-  buf.writeln('> AI 生成产物，未经人工核验，请逐条验证后使用。');
+  buf.writeln('> AI 可能会犯错，请认真检查。');
+  if (a.structuredIssues.isNotEmpty) {
+    buf.writeln();
+    buf.writeln('> 结构化状态：需要人工核对');
+    for (final issue in a.structuredIssues) {
+      buf.writeln('> - $issue');
+    }
+  }
   buf.writeln();
-  final body = a.content.trim();
+  final document = _structuredDocumentFor(a);
+  final body = document == null
+      ? a.content.trim()
+      : structuredArtifactToMarkdown(document);
   if (body.isNotEmpty) {
     buf.write(body);
     if (!body.endsWith('\n')) buf.writeln();
+  }
+  if (a.gaps.isNotEmpty) {
+    buf.writeln();
+    buf.writeln('## 缺失证据');
+    for (final gap in a.gaps) {
+      buf.writeln('- $gap');
+    }
+  }
+  if (a.risks.isNotEmpty) {
+    buf.writeln();
+    buf.writeln('## 风险提示');
+    for (final risk in a.risks) {
+      buf.writeln('- $risk');
+    }
   }
   return buf.toString();
 }
@@ -140,8 +230,9 @@ Future<String> buildAllMarkdown(AppState state) async {
 
 /// 原生分享通道：写文件 + 唤起系统分享面板。
 class MarkdownShare {
-  static const MethodChannel _channel =
-      MethodChannel('com.dailyasking.daily_asking/export');
+  static const MethodChannel _channel = MethodChannel(
+    'com.dailyasking.daily_asking/export',
+  );
 
   /// 返回 true 表示已成功写文件并唤起分享；false 表示失败。
   static Future<bool> share({

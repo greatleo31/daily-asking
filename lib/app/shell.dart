@@ -48,6 +48,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _autoCheckUpdate() async {
     final state = context.read<AppState>();
+    if (!state.updateService.isConfigured) return;
     final decision = await state.updateService.check();
     if (!mounted) return;
     switch (decision) {

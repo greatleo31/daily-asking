@@ -1,19 +1,17 @@
-/// 工作室：搜索并选择证据，默认用 AI 生成简历要点 / 周报 / 面试反馈。
-///
-/// - AI 未配置时，点生成会强制引导先配置供应商（不可跳过）。
-/// - 已配置时出站前必须展示披露（服务商/模型/路径/字段范围）。
-/// - 生成结果标注：已有事实、缺失证据、风险提示。
+/// 工作室：选择证据生成 Markdown 产物，并提供轻量虚拟文件库。
 library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../core/export/markdown_exporter.dart';
 import '../../core/llm/llm_client.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
 import '../../settings/settings_page.dart';
-import '../../settings/settings_repository.dart';
+import 'artifact_generation.dart';
+import 'artifact_library.dart';
 import 'artifact_view_page.dart';
 
 class StudioPage extends StatefulWidget {
@@ -22,6 +20,7 @@ class StudioPage extends StatefulWidget {
     this.initialEntryIds = const [],
     this.showAppBar = false,
   });
+
   final List<String> initialEntryIds;
   final bool showAppBar;
 
@@ -34,6 +33,10 @@ class _StudioPageState extends State<StudioPage> {
   final _search = TextEditingController();
   String _query = '';
   bool _busy = false;
+  ArtifactLibraryFolder _folder = ArtifactLibraryFolder.all;
+  ArtifactSortField _sortField = ArtifactSortField.date;
+  bool _ascending = false;
+  String? _lastCreatedArtifactId;
 
   @override
   void initState() {
@@ -50,33 +53,39 @@ class _StudioPageState extends State<StudioPage> {
   }
 
   List<Entry> _chosen(List<Entry> allEntries) =>
-      allEntries.where((e) => _selected[e.id] == true).toList();
+      allEntries.where((entry) => _selected[entry.id] == true).toList();
 
-  /// 搜索过滤后的可见证据列表（作用于任务/背景/行动/结果/难点/标签）。
-  List<Entry> _visible(List<Entry> allEntries) {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return allEntries;
+  List<Entry> _visibleEntries(List<Entry> allEntries) {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return allEntries;
     return allEntries
-        .where((e) =>
-            '${e.task} ${e.context} ${e.action} ${e.result} ${e.blocker} '
-                    '${e.tags.join()}'
-                .toLowerCase()
-                .contains(q))
+        .where(
+          (entry) =>
+              '${entry.task} ${entry.context} ${entry.action} ${entry.result} '
+                      '${entry.blocker} ${entry.tags.join()}'
+                  .toLowerCase()
+                  .contains(query),
+        )
         .toList();
   }
 
-  bool _allVisibleSelected(List<Entry> allEntries) {
-    final vis = _visible(allEntries);
-    return vis.isNotEmpty && vis.every((e) => _selected[e.id] == true);
+  List<Artifact> _visibleArtifacts(List<Artifact> artifacts) {
+    final filtered = filterArtifacts(artifacts, _folder);
+    return sortArtifacts(filtered, _sortField, ascending: _ascending);
   }
 
-  /// 全选 / 全不选当前搜索过滤后的结果。
+  bool _allVisibleSelected(List<Entry> allEntries) {
+    final visible = _visibleEntries(allEntries);
+    return visible.isNotEmpty &&
+        visible.every((entry) => _selected[entry.id] == true);
+  }
+
   void _toggleSelectAll(List<Entry> allEntries) {
-    final vis = _visible(allEntries);
+    final visible = _visibleEntries(allEntries);
     final select = !_allVisibleSelected(allEntries);
     setState(() {
-      for (final e in vis) {
-        _selected[e.id] = select;
+      for (final entry in visible) {
+        _selected[entry.id] = select;
       }
     });
   }
@@ -85,99 +94,95 @@ class _StudioPageState extends State<StudioPage> {
     final state = context.read<AppState>();
     final chosen = _chosen(state.allEntries);
     if (chosen.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('请先选择至少一条证据')));
+      _showMessage('请先选择至少一条记录');
       return;
     }
-
-    // 需求3 强制配置门：未配置时不可生成，只能去配置供应商。
     if (!state.aiReady) {
       final go = await _showConfigureGuard(context);
       if (go != true || !mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AiConfigPage()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const AiConfigPage()));
       return;
     }
 
     final settings = await state.readLlmSettings();
-    final apiKey = await _readApiKey();
-    if (!mounted) return;
+    final apiKey = await state.readApiKeyForCall();
+    if (!mounted || apiKey == null) return;
     final payload = OutboundPayload(entries: chosen, artifactType: type);
-    final ok = await _confirmDisclosureAndKey(context, payload, settings);
+    final ok = await _confirmDisclosure(context, payload);
     if (ok != true) return;
+
     setState(() => _busy = true);
-    final client = OpenAiClient();
-    final result = await client.complete(
+    final generatedAt = DateTime.now();
+    final result = await OpenAiClient().complete(
       settings: settings,
-      apiKey: apiKey!,
+      apiKey: apiKey,
       system: payload.buildSystemPrompt(type),
-      user: payload.buildUserMessage(),
+      user: payload.buildUserMessage(referenceDate: generatedAt),
     );
-    setState(() => _busy = false);
+    if (mounted) setState(() => _busy = false);
     if (!mounted) return;
     if (result.isError) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(result.error!)));
+      _showMessage(result.error!);
       return;
     }
-    final artifact = Artifact(
+
+    final artifact = buildGeneratedArtifact(
       id: genId(prefix: 'a_'),
       type: type,
-      content: result.content,
-      sourceEntryIds: chosen.map((e) => e.id).toList(),
-      risks: const ['AI 生成内容未经人工核对，请逐条验证。'],
-      gaps: const ['AI 生成内容不保证覆盖全部缺失证据，请自行核对。'],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      rawContent: result.content,
+      sourceEntries: chosen,
+      generatedAt: generatedAt,
     );
     await state.updateArtifact(artifact);
+    if (!mounted) return;
+    setState(() => _lastCreatedArtifactId = artifact.id);
+    Future<void>.delayed(const Duration(milliseconds: 1400), () {
+      if (mounted && _lastCreatedArtifactId == artifact.id) {
+        setState(() => _lastCreatedArtifactId = null);
+      }
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 260));
     if (!mounted) return;
     await _open(artifact.id);
   }
 
-  /// 未配置 AI 时的强制引导（不可跳过：无取消按钮）。
-  Future<bool?> _showConfigureGuard(BuildContext context) {
+  Future<bool?> _showConfigureGuard(BuildContext context) => showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('需要先配置 AI 供应商'),
+      content: const Text('生成产物需要调用 AI，请先配置一个 OpenAI 兼容供应商'),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('去配置'),
+        ),
+      ],
+    ),
+  );
+
+  Future<bool?> _confirmDisclosure(
+    BuildContext context,
+    OutboundPayload payload,
+  ) {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('需要先配置 AI 供应商'),
-        content: const Text(
-            '生成产物需要调用 AI，请先配置一个 OpenAI 兼容供应商'
-            '（服务商 / Base URL / 模型 / API Key）。'),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('去配置'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _readApiKey() async {
-    // 通过 AppState 门面读取（不进入 Widget 状态，不回显，仅用于调用）。
-    final state = context.read<AppState>();
-    return await state.readApiKeyForCall();
-  }
-
-  Future<bool?> _confirmDisclosureAndKey(
-      BuildContext context, OutboundPayload payload, LlmSettings settings) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('出站披露 · 确认后发送'),
-        content: SingleChildScrollView(
-          child: Text(payload.toDisclosure(settings),
-              style: Theme.of(ctx).textTheme.bodySmall),
+        title: const Text('访问 AI 服务'),
+        content: Text(
+          payload.toDisclosure(),
+          style: Theme.of(ctx).textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('确认发送')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认访问'),
+          ),
         ],
       ),
     );
@@ -185,147 +190,453 @@ class _StudioPageState extends State<StudioPage> {
 
   Future<void> _open(String artifactId) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ArtifactViewPage(artifactId: artifactId)),
+      MaterialPageRoute(
+        builder: (_) => ArtifactViewPage(artifactId: artifactId),
+      ),
     );
+  }
+
+  Future<void> _downloadArtifact(Artifact artifact) async {
+    final ok = await MarkdownShare.share(
+      fileName: artifactFileName(artifact, DateTime.now()),
+      content: artifactMarkdownSource(artifact),
+    );
+    if (mounted) _showMessage(ok ? '已下载并唤起分享' : '下载失败，请重试');
+  }
+
+  Future<void> _deleteArtifact(Artifact artifact) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除这份产物？'),
+        content: Text('“${artifactDisplayName(artifact)}”删除后无法恢复'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await context.read<AppState>().deleteArtifact(artifact.id);
+    _showMessage('已删除');
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _selectFolder(ArtifactLibraryFolder folder) {
+    setState(() => _folder = folder);
+  }
+
+  void _selectSort(_ArtifactSortOption option) {
+    setState(() {
+      _sortField = option.field;
+      _ascending = option.ascending;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final allEntries = context.select((AppState s) => s.allEntries);
-    final artifacts = context.select((AppState s) => s.artifacts);
+    final allEntries = context.select((AppState state) => state.allEntries);
+    final artifacts = context.select((AppState state) => state.artifacts);
     final theme = Theme.of(context);
-    final visible = _visible(allEntries);
-    final content = ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        children: [
-          Text('选择证据，生成简历要点 / 周报 / 面试反馈',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.secondary)),
-          const SizedBox(height: 16),
-          // 搜索栏。
-          TextField(
-            controller: _search,
-            onChanged: (v) => setState(() => _query = v),
-            decoration: const InputDecoration(
-              hintText: '搜索证据…',
-              prefixIcon: Icon(Icons.search),
+    final visibleEntries = _visibleEntries(allEntries);
+    final visibleArtifacts = _visibleArtifacts(artifacts);
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      children: [
+        _ArtifactLibraryHeader(
+          folder: _folder,
+          sortField: _sortField,
+          ascending: _ascending,
+          onFolderChanged: _selectFolder,
+          onSortSelected: _selectSort,
+        ),
+        const SizedBox(height: 14),
+        _ArtifactLibraryList(
+          artifacts: visibleArtifacts,
+          highlightedId: _lastCreatedArtifactId,
+          onOpen: _open,
+          onDownload: _downloadArtifact,
+          onDelete: _deleteArtifact,
+        ),
+        const SizedBox(height: 24),
+        Text(
+          '选择记录生成新产物',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _search,
+          onChanged: (value) => setState(() => _query = value),
+          decoration: const InputDecoration(
+            hintText: '搜索记录…',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '选择记录（${_chosen(allEntries).length}/${allEntries.length}）',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (allEntries.isNotEmpty)
+              TextButton(
+                onPressed: () => _toggleSelectAll(allEntries),
+                child: Text(_allVisibleSelected(allEntries) ? '全不选' : '全选'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (allEntries.isEmpty)
+          const _EntryEmptyState()
+        else if (visibleEntries.isEmpty)
+          _EntryEmptyState(query: _query)
+        else
+          ...visibleEntries.map(
+            (entry) => _SelectableEntry(
+              entry: entry,
+              selected: _selected[entry.id] == true,
+              onToggle: () => setState(() {
+                _selected[entry.id] = !(_selected[entry.id] == true);
+              }),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '选择证据（${_chosen(allEntries).length}/${allEntries.length}）',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (allEntries.isNotEmpty)
-                TextButton(
-                  onPressed: () => _toggleSelectAll(allEntries),
-                  child: Text(_allVisibleSelected(allEntries) ? '全不选' : '全选'),
-                ),
-            ],
+        const SizedBox(height: 18),
+        Text(
+          '生成产物',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(height: 8),
-          if (allEntries.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.inbox_outlined,
-                      color: theme.colorScheme.secondary),
-                  const SizedBox(height: 8),
-                  Text('还没有证据可选，先去「今日」记录一些吧。',
-                      style: theme.textTheme.bodySmall),
-                ],
-              ),
-            )
-          else if (visible.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.search_off, color: theme.colorScheme.secondary),
-                  const SizedBox(height: 8),
-                  Text('没有匹配"$_query"的证据',
-                      style: theme.textTheme.bodySmall),
-                ],
-              ),
-            )
-          else
-            ...visible.map((e) => _SelectableEntry(
-                  entry: e,
-                  selected: _selected[e.id] == true,
-                  onToggle: () => setState(() {
-                    _selected[e.id] = !(_selected[e.id] == true);
-                  }),
-                )),
-          const SizedBox(height: 24),
-          Text('生成产物',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 12),
-          _GenButton(
-            color: theme.colorScheme.primary,
-            icon: Icons.assignment_outlined,
-            title: '简历要点',
-            subtitle: '把行动与结果整理成可投递的要点',
-            busy: _busy,
-            onTap: () => _generate(ArtifactType.resume),
-          ),
-          _GenButton(
-            color: const Color(0xFFC98A2D),
-            icon: Icons.calendar_view_week_outlined,
-            title: '周报',
-            subtitle: '按事项/结果/难点整理本周summary',
-            busy: _busy,
-            onTap: () => _generate(ArtifactType.weekly),
-          ),
-          _GenButton(
-            color: const Color(0xFF2E6E7E),
-            icon: Icons.question_answer_outlined,
-            title: '面试反馈',
-            subtitle: '像面试官看完你的所有工作一样，给出真实反馈与成长建议',
-            busy: _busy,
-            onTap: () => _generate(ArtifactType.interview),
-          ),
-          const SizedBox(height: 24),
-          if (artifacts.isNotEmpty) ...[
-            Text('已保存产物',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            ...artifacts.map((a) => _ArtifactTile(
-                  artifact: a,
-                  onTap: () => _open(a.id),
-                )),
-          ],
-        ],
-      );
+        ),
+        const SizedBox(height: 10),
+        _GenButton(
+          color: theme.colorScheme.primary,
+          icon: Icons.assignment_outlined,
+          title: '简历要点',
+          subtitle: '整理成可投递的要点',
+          busy: _busy,
+          onTap: () => _generate(ArtifactType.resume),
+        ),
+        _GenButton(
+          color: const Color(0xFFC98A2D),
+          icon: Icons.calendar_view_week_outlined,
+          title: '周报',
+          subtitle: '整理工作进展',
+          busy: _busy,
+          onTap: () => _generate(ArtifactType.weekly),
+        ),
+        _GenButton(
+          color: const Color(0xFF2E6E7E),
+          icon: Icons.question_answer_outlined,
+          title: '面试反馈',
+          subtitle: '反馈亮点、偏浅处和方向',
+          busy: _busy,
+          onTap: () => _generate(ArtifactType.interview),
+        ),
+      ],
+    );
     return widget.showAppBar
         ? Scaffold(
             appBar: AppBar(title: const Text('重新分析')),
-            body: content,
+            body: body,
           )
-        : SafeArea(child: content);
+        : SafeArea(child: body);
   }
 }
 
+enum _ArtifactSortOption {
+  nameAsc(ArtifactSortField.name, true, '名称 · 升序'),
+  nameDesc(ArtifactSortField.name, false, '名称 · 降序'),
+  dateAsc(ArtifactSortField.date, true, '日期 · 升序'),
+  dateDesc(ArtifactSortField.date, false, '日期 · 降序'),
+  typeAsc(ArtifactSortField.type, true, '类型 · 升序'),
+  typeDesc(ArtifactSortField.type, false, '类型 · 降序');
+
+  const _ArtifactSortOption(this.field, this.ascending, this.label);
+  final ArtifactSortField field;
+  final bool ascending;
+  final String label;
+}
+
+class _ArtifactLibraryHeader extends StatelessWidget {
+  const _ArtifactLibraryHeader({
+    required this.folder,
+    required this.sortField,
+    required this.ascending,
+    required this.onFolderChanged,
+    required this.onSortSelected,
+  });
+
+  final ArtifactLibraryFolder folder;
+  final ArtifactSortField sortField;
+  final bool ascending;
+  final ValueChanged<ArtifactLibraryFolder> onFolderChanged;
+  final ValueChanged<_ArtifactSortOption> onSortSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '产物库',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            PopupMenuButton<_ArtifactSortOption>(
+              tooltip: '排序',
+              icon: const Icon(Icons.sort),
+              onSelected: onSortSelected,
+              itemBuilder: (context) => _ArtifactSortOption.values
+                  .map(
+                    (option) =>
+                        PopupMenuItem(value: option, child: Text(option.label)),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+        Text(
+          '${sortField.label} · ${ascending ? '升序' : '降序'}',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.secondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: ArtifactLibraryFolder.values.map((item) {
+              final selected = item == folder;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  selected: selected,
+                  avatar: Icon(_folderIcon(item), size: 17),
+                  label: Text(item.label),
+                  onSelected: (_) => onFolderChanged(item),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _folderIcon(ArtifactLibraryFolder folder) => switch (folder) {
+    ArtifactLibraryFolder.all => Icons.folder_open_outlined,
+    ArtifactLibraryFolder.resume => Icons.assignment_outlined,
+    ArtifactLibraryFolder.weekly => Icons.calendar_view_week_outlined,
+    ArtifactLibraryFolder.interview => Icons.question_answer_outlined,
+  };
+}
+
+class _ArtifactLibraryList extends StatelessWidget {
+  const _ArtifactLibraryList({
+    required this.artifacts,
+    required this.highlightedId,
+    required this.onOpen,
+    required this.onDownload,
+    required this.onDelete,
+  });
+
+  final List<Artifact> artifacts;
+  final String? highlightedId;
+  final ValueChanged<String> onOpen;
+  final ValueChanged<Artifact> onDownload;
+  final ValueChanged<Artifact> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (artifacts.isEmpty) return const _LibraryEmptyState();
+    return Column(
+      children: artifacts
+          .map(
+            (artifact) => _ArtifactTile(
+              artifact: artifact,
+              highlighted: artifact.id == highlightedId,
+              onTap: () => onOpen(artifact.id),
+              onDownload: () => onDownload(artifact),
+              onDelete: () => onDelete(artifact),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ArtifactTile extends StatelessWidget {
+  const _ArtifactTile({
+    required this.artifact,
+    required this.highlighted,
+    required this.onTap,
+    required this.onDownload,
+    required this.onDelete,
+  });
+
+  final Artifact artifact;
+  final bool highlighted;
+  final VoidCallback onTap;
+  final VoidCallback onDownload;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (artifact.type) {
+      ArtifactType.resume => theme.colorScheme.primary,
+      ArtifactType.weekly => const Color(0xFFC98A2D),
+      ArtifactType.interview => const Color(0xFF2E6E7E),
+    };
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? color.withValues(alpha: 0.12)
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: highlighted
+              ? color.withValues(alpha: 0.55)
+              : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(Icons.description_outlined, color: color),
+        title: Text(
+          artifactDisplayName(artifact),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          '${artifact.type.label} · ${artifact.updatedAt.cnLabel}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.secondary,
+          ),
+        ),
+        trailing: PopupMenuButton<_ArtifactFileAction>(
+          tooltip: '文件操作',
+          onSelected: (action) {
+            switch (action) {
+              case _ArtifactFileAction.view:
+                onTap();
+              case _ArtifactFileAction.download:
+                onDownload();
+              case _ArtifactFileAction.delete:
+                onDelete();
+            }
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: _ArtifactFileAction.view,
+              child: ListTile(
+                leading: Icon(Icons.visibility_outlined),
+                title: Text('查看'),
+              ),
+            ),
+            PopupMenuItem(
+              value: _ArtifactFileAction.download,
+              child: ListTile(
+                leading: Icon(Icons.download_outlined),
+                title: Text('下载 Markdown'),
+              ),
+            ),
+            PopupMenuItem(
+              value: _ArtifactFileAction.delete,
+              child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('删除'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _ArtifactFileAction { view, download, delete }
+
+class _LibraryEmptyState extends StatelessWidget {
+  const _LibraryEmptyState();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Text(
+      '这个目录还没有产物，生成后会自动收纳到这里',
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+  );
+}
+
+class _EntryEmptyState extends StatelessWidget {
+  const _EntryEmptyState({this.query});
+  final String? query;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      children: [
+        Icon(
+          query == null ? Icons.inbox_outlined : Icons.search_off,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          query == null ? '还没有记录可选，先去「今日」记录一些吧' : '没有匹配“$query”的记录',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    ),
+  );
+}
+
 class _SelectableEntry extends StatelessWidget {
-  const _SelectableEntry(
-      {required this.entry, required this.selected, required this.onToggle});
+  const _SelectableEntry({
+    required this.entry,
+    required this.selected,
+    required this.onToggle,
+  });
+
   final Entry entry;
   final bool selected;
   final VoidCallback onToggle;
@@ -346,9 +657,7 @@ class _SelectableEntry extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                selected
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
+                selected ? Icons.check_circle : Icons.radio_button_unchecked,
                 color: selected
                     ? theme.colorScheme.primary
                     : theme.colorScheme.outline,
@@ -358,14 +667,18 @@ class _SelectableEntry extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(entry.task,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium),
+                    Text(
+                      entry.task,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 2),
-                    Text(entry.date.cnLabel,
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.secondary)),
+                    Text(
+                      entry.date.cnLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -378,13 +691,15 @@ class _SelectableEntry extends StatelessWidget {
 }
 
 class _GenButton extends StatelessWidget {
-  const _GenButton(
-      {required this.color,
-      required this.icon,
-      required this.title,
-      required this.subtitle,
-      required this.busy,
-      required this.onTap});
+  const _GenButton({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.busy,
+    required this.onTap,
+  });
+
   final Color color;
   final IconData icon;
   final String title;
@@ -393,58 +708,33 @@ class _GenButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        onTap: busy ? null : onTap,
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.15),
-          child: busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : Icon(icon, color: color),
-        ),
-        title: Text(title,
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.secondary)),
-        trailing: const Icon(Icons.chevron_right),
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.only(bottom: 10),
+    child: ListTile(
+      onTap: busy ? null : onTap,
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: 0.15),
+        child: busy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, color: color),
       ),
-    );
-  }
-}
-
-class _ArtifactTile extends StatelessWidget {
-  const _ArtifactTile({required this.artifact, required this.onTap});
-  final Artifact artifact;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = switch (artifact.type) {
-      ArtifactType.resume => theme.colorScheme.primary,
-      ArtifactType.weekly => const Color(0xFFC98A2D),
-      ArtifactType.interview => const Color(0xFF2E6E7E),
-    };
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(Icons.description_outlined, color: color),
-        title: Text('${artifact.type.label} · ${artifact.updatedAt.cnLabel}'),
-        subtitle: Text(
-          '${artifact.content.length} 字',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.secondary),
+      title: Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.secondary,
         ),
       ),
-    );
-  }
+      trailing: const Icon(Icons.chevron_right),
+    ),
+  );
 }
