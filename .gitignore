@@ -44,3 +44,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /coverage/
+# ===== 本地冒烟/截图临时物(不提交)=====
+_shots_tmp/
+shots_tmp/
+shots_view/
+_tmp_i.json
+tmp_ascii_input.png
+assets/companion/day_*.jpg
