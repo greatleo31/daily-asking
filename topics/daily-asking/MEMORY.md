@@ -1,7 +1,8 @@
-﻿# Memory: daily-asking
+# Memory: daily-asking
 
 ## Current Status
 
+- OpenSpec 变更 `companion-growth-ui` 已随 v1.2.0 归档至 `openspec/changes/archive/2026-09-04-companion-growth-ui`；主规范 `openspec/specs/companion-growth` 同步建立。
 - OpenSpec 变更 `studio-weekly-copy-markdown` 已用户 0.7 通过并归档至 `openspec/changes/archive/2026-09-04-studio-weekly-copy-markdown`：去证据名、标题不可拷、周报七段、直接 Markdown 渲染；`artifactPromptVersion=markdown.v2`。
 
 - OpenSpec 变更 `app-icon-from-favicon` 已用户 0.7 通过并归档至 `openspec/changes/archive/2026-09-04-app-icon-from-favicon`；Android 启动器图标与网站 favicon 同源，放大减留白。
