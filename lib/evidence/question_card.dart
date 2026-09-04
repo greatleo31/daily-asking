@@ -1,4 +1,4 @@
-/// 追问卡片：针对一条本地追问，提供"回答 / 稍后 / 跳过"。
+/// 追问卡片：针对一条本地追问，提供"回答 / 跳过"。
 library;
 
 import 'package:flutter/material.dart';
@@ -27,13 +27,17 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Future<void> _act(
-      BuildContext context, Future<void> Function(AppState) op,
-      {bool close = true}) async {
+    BuildContext context,
+    Future<EvidenceQuestion?> Function(AppState) op, {
+    bool close = true,
+  }) async {
     final state = context.read<AppState>();
     setState(() => _busy = true);
-    await op(state);
-    if (mounted && close) Navigator.of(this.context).pop();
-    setState(() => _busy = false);
+    final result = await op(state);
+    if (mounted && close) {
+      Navigator.of(this.context).pop(result);
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   @override
@@ -84,6 +88,7 @@ class _QuestionCardState extends State<QuestionCard> {
             controller: _controller,
             maxLines: 3,
             decoration: const InputDecoration(hintText: '补充你的回答…'),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           Row(
@@ -95,13 +100,6 @@ class _QuestionCardState extends State<QuestionCard> {
                         (s) => s.setQuestionStatus(q.id, QuestionStatus.skip)),
                 child: const Text('跳过'),
               ),
-              TextButton(
-                onPressed: _busy
-                    ? null
-                    : () => _act(context,
-                        (s) => s.setQuestionStatus(q.id, QuestionStatus.later)),
-                child: const Text('稍后'),
-              ),
               const Spacer(),
               FilledButton.icon(
                 onPressed: _busy
@@ -109,11 +107,10 @@ class _QuestionCardState extends State<QuestionCard> {
                     : _controller.text.trim().isEmpty
                         ? null
                         : () => _act(
-                            context,
-                            (s) => s.answerQuestion(
-                                q.id, _controller.text),
-                            close: true,
-                          ),
+                              context,
+                              (s) => s.answerQuestion(q.id, _controller.text),
+                              close: true,
+                            ),
                 icon: const Icon(Icons.check),
                 label: const Text('回答'),
               ),

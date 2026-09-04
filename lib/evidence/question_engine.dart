@@ -1,13 +1,13 @@
 /// 本地追问规则引擎：决定"保存后最多追问一个最值得补充的问题"。
 ///
 /// 纯业务规则，不涉及 UI。规则：
-/// - result 为空 → 问结果/验证
 /// - context 为空 → 问背景
 /// - action 为空 → 问具体行动
+/// - result 为空 → 问结果/验证
 /// - blocker 为空 → 问难点/取舍
 /// - 个人贡献不清晰 → 问个人贡献
 /// - 每次最多生成一个问题
-/// - 同一条记录上被 skip 的问题不立即重复出现
+/// - 同一条记录上已 answered 或 skip 的种类永久排除，不再纠缠
 library;
 
 import '../core/models.dart';
@@ -20,23 +20,23 @@ class QuestionEngine {
     required List<EvidenceQuestion> existing,
   }) {
     const order = [
-      QuestionKind.result,
       QuestionKind.context,
       QuestionKind.action,
+      QuestionKind.result,
       QuestionKind.blocker,
       QuestionKind.contribution,
     ];
 
-    // 已被跳过的问题，短期内不重复出现。
-    final skippedKinds =
-        existing.where((q) => q.status == QuestionStatus.skip).map((q) => q.kind).toSet();
+    // 已被 answered 或 skip 的种类永久排除，不再纠缠。
+    final excludedKinds = existing
+        .where((q) =>
+            q.status == QuestionStatus.skip ||
+            q.status == QuestionStatus.answered)
+        .map((q) => q.kind)
+        .toSet();
 
     for (final kind in order) {
-      if (skippedKinds.contains(kind)) continue;
-      // 已答过的问题不再追问。
-      final answered =
-          existing.any((q) => q.kind == kind && q.status == QuestionStatus.answered);
-      if (answered) continue;
+      if (excludedKinds.contains(kind)) continue;
 
       final isEmpty = _isEmpty(kind, entry);
       if (!isEmpty) {
@@ -68,7 +68,7 @@ class QuestionEngine {
     final (prompt, reason) = switch (kind) {
       QuestionKind.result => (
           '这件事最后有什么结果，或可验证的变化？',
-          '结果/验证最能体现价值，先补它',
+          '结果/验证最能体现价值',
         ),
       QuestionKind.context => (
           '这件事发生在什么背景 / 场景下？',
