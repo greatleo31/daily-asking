@@ -388,40 +388,46 @@ class _ArtifactLibraryHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '产物库',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            PopupMenuButton<_SortSelection>(
-              tooltip: '排序',
-              icon: const Icon(Icons.sort),
-              onSelected: onSortSelected,
-              itemBuilder: (context) => [
-                for (final field in ArtifactSortField.values)
-                  for (final ascending in const [true, false])
-                    PopupMenuItem(
-                      value: (field: field, ascending: ascending),
-                      child: Text(
-                        '${field.label} · ${ascending ? '升序' : '降序'}',
-                      ),
-                    ),
-              ],
-            ),
-          ],
-        ),
         Text(
-          '${sortField.label} · ${ascending ? '升序' : '降序'}',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.secondary,
+          '产物库',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: SegmentedButton<ArtifactSortField>(
+                segments: [
+                  for (final field in ArtifactSortField.values)
+                    ButtonSegment(value: field, label: Text(field.label)),
+                ],
+                selected: {sortField},
+                showSelectedIcon: true,
+                onSelectionChanged: (selection) => onSortSelected(
+                  (field: selection.first, ascending: ascending),
+                ),
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: ascending ? '切换为降序' : '切换为升序',
+              visualDensity: VisualDensity.compact,
+              onPressed: () =>
+                  onSortSelected((field: sortField, ascending: !ascending)),
+              icon: Icon(
+                ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
