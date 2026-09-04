@@ -37,7 +37,8 @@
 | `lib/evidence/` | 证据记录页、详情页、图谱、追问卡片、`question_engine`（本地追问规则引擎） |
 | `lib/journal/` | 今日记录页 |
 | `lib/artifacts/` | 工作室、产物生成与查看 |
-| `lib/settings/` | 设置页、BYOK 配置页、`settings_repository` |
+| `lib/settings/` | 设置页、BYOK 配置页、`settings_repository`、`secure_key_store`（加密存储） |
+| `lib/updater/` | 版本检查与更新：`update_service` / `update_info` / `update_prefs` |
 
 ## 关键设计
 
@@ -59,7 +60,20 @@
 - API Key 由 `settings_repository` 写入**隔离存储**，页面不回显；日志不记录 API Key、记录正文、提示词全文。
 - `llm_client` 具备 DNS 预检、有限重试与响应归一化（支持 OpenAI 多模态 content 数组与 responses 风格兜底）。
 
-### 4. 全局状态（AppState）
+### 4. API Key 加密存储
+
+- BYOK API Key 只进入 `flutter_secure_storage`（Android 走 Keystore +
+  EncryptedSharedPreferences），普通 SharedPreferences 只保存非敏感设置。
+- 旧版本明文 Key 在启动时自动迁移到加密存储并删除明文。
+
+### 5. 版本与更新机制
+
+- `lib/core/version.dart` 为版本号单一来源（与 `pubspec.yaml` 同步，由
+  `scripts/bump-version.sh` 维护）。
+- 更新源协议、检查 / 下载 / 安装流程见
+  [docs/02-版本与更新机制.md](02-版本与更新机制.md)。
+
+### 6. 全局状态（AppState）
 
 - `AppState` 继承 `ChangeNotifier`，通过 `Provider` 注入到整棵树。
 - 提供记录、追问、回答、产物、主题、BYOK 配置等统一入口；各页面通过 `context.read / watch` 访问。
@@ -77,6 +91,8 @@
 
 - `test/llm_client_test.dart` — LLM 响应解析归一化测试。
 - `test/widget_test.dart` — 数据序列化往返、本地追问引擎规则测试。
+- `test/update_info_test.dart` — 更新清单解析容错、版本比对三态测试。
+- `test/version_mapping_test.dart` — versionCode 公式与 SemVer 解析测试。
 
 ## 构建与质量
 

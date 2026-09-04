@@ -1,4 +1,4 @@
-/// 晨昏证据图谱 —— 本地优先的职场证据成长助手。
+/// 留痕 —— 本地优先的职场证据成长助手。
 library;
 
 import 'package:flutter/material.dart';
@@ -25,15 +25,16 @@ class DailyAskingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<AppState>.value(
       value: appState,
-      child: Consumer<AppState>(
-        builder: (context, state, _) {
-          final mode = switch (state.theme) {
+      child: Builder(
+        builder: (context) {
+          final themePref = context.select((AppState s) => s.theme);
+          final mode = switch (themePref) {
             ThemeModePreference.system => ThemeMode.system,
             ThemeModePreference.light => ThemeMode.light,
             ThemeModePreference.dark => ThemeMode.dark,
           };
           return MaterialApp(
-            title: '晨昏证据图谱',
+            title: '留痕',
             debugShowCheckedModeBanner: false,
             theme: buildLightTheme(),
             darkTheme: buildDarkTheme(),

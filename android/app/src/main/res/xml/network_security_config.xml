@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置（Android 9 以上默认禁止明文流量）。
+  base-config 默认禁止 cleartext（生产只走 HTTPS），
+  仅放行 127.0.0.1 用于演示更新源（配合 adb reverse tcp:8090 tcp:8090）。
+  生产环境通过 dart-define UPDATE_BASE_URL 注入 HTTPS 地址。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

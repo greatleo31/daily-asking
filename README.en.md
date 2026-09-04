@@ -1,4 +1,4 @@
-# Daily Asking (晨昏证据图谱)
+# Daily Asking (留痕)
 
 > A local-first workplace evidence growth companion: record one real thing every day, turn traces into evidence, and turn evidence into outcomes.
 
@@ -18,6 +18,7 @@ Daily Asking is a **local-first** mobile app. It starts from "one real thing tha
 - **Studio (optional AI)**: select one or more evidence entries and generate resume bullet points / weekly reports / interview question cards.
 - **BYOK (Bring Your Own Key)**: AI calls use your own API key (OpenAI-compatible). The key is stored only in isolated local storage, never echoed in the UI; every real call shows an **outbound disclosure** and only sends the minimal fields you selected after you confirm.
 - **Theme switching**: system / light / dark.
+- **Version updates**: manually check for updates on the About page, with automatic checks on launch; auto-update can be enabled, and mandatory updates cannot be skipped. See [docs/02-版本与更新机制.md](docs/02-版本与更新机制.md) for the update manifest and APK verification.
 
 ## 🚀 Getting Started
 
@@ -60,7 +61,8 @@ An Android build is available as `app-release.apk` (not committed to the repo). 
 - `lib/evidence/` — evidence records, follow-up engine, evidence graph
 - `lib/journal/` — today page
 - `lib/artifacts/` — studio and artifact management
-- `lib/settings/` — settings and BYOK configuration
+- `lib/settings/` — settings, BYOK configuration, and encrypted API key storage
+- `lib/updater/` — version checking and update mechanism
 - `lib/app/` — app shell and global state
 
 See [docs/architecture.md](docs/architecture.md).

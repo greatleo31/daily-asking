@@ -1,4 +1,4 @@
-/// 领域模型：晨昏证据图谱。
+/// 领域模型：留痕。
 ///
 /// 所有实体都是纯 Dart 对象，通过 `fromJson/toJson` 序列化，
 /// 与具体持久化方案（当前为本地 JSON，后续可替换为 SQLite/Drift）解耦。
@@ -61,30 +61,30 @@ class Entry {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'date': date.toIso8601String(),
-        'task': task,
-        'context': context,
-        'action': action,
-        'result': result,
-        'blocker': blocker,
-        'tags': tags,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'date': date.toIso8601String(),
+    'task': task,
+    'context': context,
+    'action': action,
+    'result': result,
+    'blocker': blocker,
+    'tags': tags,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory Entry.fromJson(Map<String, dynamic> json) => Entry(
-        id: json['id'] as String,
-        date: DateTime.parse(json['date'] as String),
-        task: json['task'] as String? ?? '',
-        context: json['context'] as String? ?? '',
-        action: json['action'] as String? ?? '',
-        result: json['result'] as String? ?? '',
-        blocker: json['blocker'] as String? ?? '',
-        tags: (json['tags'] as List?)?.cast<String>() ?? const [],
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    date: DateTime.parse(json['date'] as String),
+    task: json['task'] as String? ?? '',
+    context: json['context'] as String? ?? '',
+    action: json['action'] as String? ?? '',
+    result: json['result'] as String? ?? '',
+    blocker: json['blocker'] as String? ?? '',
+    tags: (json['tags'] as List?)?.cast<String>() ?? const [],
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+  );
 
   Entry copy() => Entry.fromJson(toJson());
 }
@@ -127,15 +127,15 @@ class EvidenceQuestion {
   DateTime updatedAt;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'entryId': entryId,
-        'kind': kind.name,
-        'prompt': prompt,
-        'reason': reason,
-        'status': status.name,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'entryId': entryId,
+    'kind': kind.name,
+    'prompt': prompt,
+    'reason': reason,
+    'status': status.name,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory EvidenceQuestion.fromJson(Map<String, dynamic> json) =>
       EvidenceQuestion(
@@ -144,8 +144,7 @@ class EvidenceQuestion {
         kind: QuestionKind.values.byName(json['kind'] as String),
         prompt: json['prompt'] as String,
         reason: json['reason'] as String? ?? '',
-        status:
-            QuestionStatus.values.byName(json['status'] as String),
+        status: QuestionStatus.values.byName(json['status'] as String),
         createdAt: DateTime.parse(json['createdAt'] as String),
         updatedAt: DateTime.parse(json['updatedAt'] as String),
       );
@@ -166,25 +165,25 @@ class EvidenceAnswer {
   final DateTime createdAt;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'questionId': questionId,
-        'content': content,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'questionId': questionId,
+    'content': content,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory EvidenceAnswer.fromJson(Map<String, dynamic> json) => EvidenceAnswer(
-        id: json['id'] as String,
-        questionId: json['questionId'] as String,
-        content: json['content'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    questionId: json['questionId'] as String,
+    content: json['content'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }
 
 /// 产物类型。
 enum ArtifactType {
   resume('简历要点'),
   weekly('周报'),
-  interview('面试追问卡');
+  interview('面试反馈');
 
   const ArtifactType(this.label);
   final String label;
@@ -201,39 +200,67 @@ class Artifact {
     required this.gaps,
     required this.createdAt,
     required this.updatedAt,
+    this.structuredContent,
+    this.structuredIssues = const [],
+    this.referenceDate,
+    this.promptVersion,
   });
 
   final String id;
   final ArtifactType type;
+
+  /// 原始模型输出；既是审计层也是旧 Markdown 兼容层。
   String content;
   final List<String> sourceEntryIds;
-  final List<String> risks; // 风险提示
-  final List<String> gaps; // 缺失证据
+  final List<String> risks;
+  final List<String> gaps;
   final DateTime createdAt;
   DateTime updatedAt;
 
+  /// 历史版本曾保存的结构化结果；升级时保留，用于兼容读取。
+  String? structuredContent;
+
+  /// 历史结构化校验问题；升级时保留。
+  List<String> structuredIssues;
+
+  /// 生成时应用提供的参考日期与 Prompt 版本。
+  String? referenceDate;
+  String? promptVersion;
+
+  bool get hasStructuredContent =>
+      structuredContent != null && structuredContent!.trim().isNotEmpty;
+
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'content': content,
-        'sourceEntryIds': sourceEntryIds,
-        'risks': risks,
-        'gaps': gaps,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'type': type.name,
+    'content': content,
+    'sourceEntryIds': sourceEntryIds,
+    'risks': risks,
+    'gaps': gaps,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    if (hasStructuredContent) 'structuredContent': structuredContent,
+    if (structuredIssues.isNotEmpty) 'structuredIssues': structuredIssues,
+    if (referenceDate != null) 'referenceDate': referenceDate,
+    if (promptVersion != null) 'promptVersion': promptVersion,
+  };
 
   factory Artifact.fromJson(Map<String, dynamic> json) => Artifact(
-        id: json['id'] as String,
-        type: ArtifactType.values.byName(json['type'] as String),
-        content: json['content'] as String,
-        sourceEntryIds: (json['sourceEntryIds'] as List?)?.cast<String>() ??
-            const [],
-        risks: (json['risks'] as List?)?.cast<String>() ?? const [],
-        gaps: (json['gaps'] as List?)?.cast<String>() ?? const [],
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    type: ArtifactType.values.byName(json['type'] as String),
+    content: json['content'] as String,
+    sourceEntryIds:
+        (json['sourceEntryIds'] as List?)?.cast<String>() ?? const [],
+    risks: (json['risks'] as List?)?.cast<String>() ?? const [],
+    gaps: (json['gaps'] as List?)?.cast<String>() ?? const [],
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+    structuredContent: json['structuredContent'] as String?,
+    structuredIssues:
+        (json['structuredIssues'] as List?)?.cast<String>() ?? const [],
+    referenceDate: json['referenceDate'] as String?,
+    promptVersion: json['promptVersion'] as String?,
+  );
 }
 
 // 修复上面 extension 与字段名冲突的写法（避免自赋值）。
