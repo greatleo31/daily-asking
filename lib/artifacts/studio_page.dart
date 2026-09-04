@@ -388,46 +388,48 @@ class _ArtifactLibraryHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '产物库',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: SegmentedButton<ArtifactSortField>(
-                segments: [
-                  for (final field in ArtifactSortField.values)
-                    ButtonSegment(value: field, label: Text(field.label)),
-                ],
-                selected: {sortField},
-                showSelectedIcon: true,
-                onSelectionChanged: (selection) => onSortSelected(
-                  (field: selection.first, ascending: ascending),
-                ),
-                style: const ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              child: Text(
+                '产物库',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SegmentedButton<ArtifactSortField>(
+              segments: [
+                for (final field in ArtifactSortField.values)
+                  ButtonSegment(value: field, label: Text(field.label)),
+              ],
+              selected: {sortField},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) => onSortSelected(
+                (field: selection.first, ascending: ascending),
+              ),
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 2),
             IconButton(
               tooltip: ascending ? '切换为降序' : '切换为升序',
               visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               onPressed: () =>
                   onSortSelected((field: sortField, ascending: !ascending)),
               icon: Icon(
                 ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 20,
                 color: theme.colorScheme.primary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -437,10 +439,6 @@ class _ArtifactLibraryHeader extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
                   selected: selected,
-                  avatar: Icon(
-                    selected ? Icons.check : _folderIcon(item),
-                    size: 17,
-                  ),
                   label: Text(item.label),
                   onSelected: (_) => onFolderChanged(item),
                 ),
@@ -452,12 +450,6 @@ class _ArtifactLibraryHeader extends StatelessWidget {
     );
   }
 
-  IconData _folderIcon(ArtifactLibraryFolder folder) => switch (folder) {
-    ArtifactLibraryFolder.all => Icons.folder_open_outlined,
-    ArtifactLibraryFolder.resume => Icons.assignment_outlined,
-    ArtifactLibraryFolder.weekly => Icons.calendar_view_week_outlined,
-    ArtifactLibraryFolder.interview => Icons.question_answer_outlined,
-  };
 }
 
 class _ArtifactLibraryList extends StatelessWidget {
