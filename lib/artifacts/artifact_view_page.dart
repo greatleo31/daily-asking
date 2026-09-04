@@ -166,7 +166,7 @@ class _ArtifactBody extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${artifact.updatedAt.cnLabel}',
+                artifact.updatedAt.cnLabel,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.secondary,
                 ),

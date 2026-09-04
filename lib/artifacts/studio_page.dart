@@ -241,7 +241,7 @@ class _StudioPageState extends State<StudioPage> {
     setState(() => _folder = folder);
   }
 
-  void _selectSort(_ArtifactSortOption option) {
+  void _selectSort(_SortSelection option) {
     setState(() {
       _sortField = option.field;
       _ascending = option.ascending;
@@ -365,19 +365,7 @@ class _StudioPageState extends State<StudioPage> {
   }
 }
 
-enum _ArtifactSortOption {
-  nameAsc(ArtifactSortField.name, true, '名称 · 升序'),
-  nameDesc(ArtifactSortField.name, false, '名称 · 降序'),
-  dateAsc(ArtifactSortField.date, true, '日期 · 升序'),
-  dateDesc(ArtifactSortField.date, false, '日期 · 降序'),
-  typeAsc(ArtifactSortField.type, true, '类型 · 升序'),
-  typeDesc(ArtifactSortField.type, false, '类型 · 降序');
-
-  const _ArtifactSortOption(this.field, this.ascending, this.label);
-  final ArtifactSortField field;
-  final bool ascending;
-  final String label;
-}
+typedef _SortSelection = ({ArtifactSortField field, bool ascending});
 
 class _ArtifactLibraryHeader extends StatelessWidget {
   const _ArtifactLibraryHeader({
@@ -392,7 +380,7 @@ class _ArtifactLibraryHeader extends StatelessWidget {
   final ArtifactSortField sortField;
   final bool ascending;
   final ValueChanged<ArtifactLibraryFolder> onFolderChanged;
-  final ValueChanged<_ArtifactSortOption> onSortSelected;
+  final ValueChanged<_SortSelection> onSortSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -410,16 +398,20 @@ class _ArtifactLibraryHeader extends StatelessWidget {
                 ),
               ),
             ),
-            PopupMenuButton<_ArtifactSortOption>(
+            PopupMenuButton<_SortSelection>(
               tooltip: '排序',
               icon: const Icon(Icons.sort),
               onSelected: onSortSelected,
-              itemBuilder: (context) => _ArtifactSortOption.values
-                  .map(
-                    (option) =>
-                        PopupMenuItem(value: option, child: Text(option.label)),
-                  )
-                  .toList(),
+              itemBuilder: (context) => [
+                for (final field in ArtifactSortField.values)
+                  for (final ascending in const [true, false])
+                    PopupMenuItem(
+                      value: (field: field, ascending: ascending),
+                      child: Text(
+                        '${field.label} · ${ascending ? '升序' : '降序'}',
+                      ),
+                    ),
+              ],
             ),
           ],
         ),
@@ -439,7 +431,10 @@ class _ArtifactLibraryHeader extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
                   selected: selected,
-                  avatar: Icon(_folderIcon(item), size: 17),
+                  avatar: Icon(
+                    selected ? Icons.check : _folderIcon(item),
+                    size: 17,
+                  ),
                   label: Text(item.label),
                   onSelected: (_) => onFolderChanged(item),
                 ),
