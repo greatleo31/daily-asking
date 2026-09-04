@@ -6,10 +6,10 @@
 library;
 
 /// 展示用语义化版本名（versionName）。
-const kAppVersionName = '1.2.1';
+const kAppVersionName = '1.2.2';
 
 /// 更新判定唯一依据（versionCode），必须单调递增。
-const kAppVersionCode = 10201;
+const kAppVersionCode = 10202;
 
 /// 按 SemVer 三段计算 versionCode（与 bump 脚本保持一致）。
 int versionCodeOf(int major, int minor, int patch) =>

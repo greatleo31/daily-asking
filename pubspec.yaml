@@ -1,7 +1,7 @@
 name: daily_asking
 description: "留痕 —— 本地优先的职场证据成长助手（Daily Asking: local-first workplace evidence growth companion）。"
 publish_to: 'none'
-version: 1.2.1+10201
+version: 1.2.2+10202
 
 repository: https://github.com/greatleo31/daily-asking
 homepage: https://github.com/greatleo31/daily-asking
