@@ -9,13 +9,20 @@ void main() {
     for (final type in ArtifactType.values) {
       test('${type.label} 要求 Markdown 结构与证据边界', () {
         final p = systemPromptFor(type);
-        for (final section in ['# 角色', '# 目标', '# 输出结构', '## 边界']) {
+        for (final section in [
+          '# Role',
+          '# Objectives',
+          '# Output Format',
+          '## 边界',
+        ]) {
           expect(p, contains(section), reason: '缺少「$section」');
         }
         expect(p, contains('Markdown'));
-        expect(p, contains('只输出 Markdown 正文'));
+        expect(p, contains('仅输出最终的 Markdown 正文'));
         expect(p, contains('严禁编造'));
         expect(p, contains('不要输出 JSON'));
+        expect(p, contains('严禁包含溯源标记'));
+        expect(p, contains('全部使用简体中文'));
       });
     }
   });
@@ -25,7 +32,8 @@ void main() {
     expect(p, contains('简历要点'));
     expect(p, contains('逐条依据'));
     expect(p, contains('缺失与建议'));
-    expect(p, contains('动词开头'));
+    expect(p, contains('强动词开头'));
+    expect(p, contains('STAR'));
   });
 
   test('周报使用七段公司结构章节', () {
@@ -42,16 +50,16 @@ void main() {
     ]) {
       expect(p, contains(section), reason: '缺少「$section」');
     }
-    expect(p, contains('普通文本“无”'));
+    expect(p, contains('普通文本「无」'));
     expect(p, isNot(contains('## 进行中')));
     expect(p, isNot(contains('## 风险与阻塞')));
     expect(p, isNot(contains('## 数据与可验证成果')));
-    expect(artifactPromptVersion, 'markdown.v2');
+    expect(artifactPromptVersion, 'markdown.v3');
   });
 
   test('面试反馈保留逐条点评和补强章节且不生成评分', () {
     final p = systemPromptFor(ArtifactType.interview);
-    expect(p, contains('资深技术面试官'));
+    expect(p, contains('技术面试官'));
     for (final keyword in [
       '总体评价',
       '逐条点评',
@@ -64,7 +72,8 @@ void main() {
     ]) {
       expect(p, contains(keyword), reason: '缺少「$keyword」');
     }
-    expect(p, contains('不生成评分'));
+    expect(p, contains('绝对禁止输出'));
+    expect(p, contains('打分'));
   });
 
   test('用户消息包含真实记录 id 与参考日期', () {
