@@ -73,9 +73,9 @@ void main() {
       expect((d as UpdateAvailable).info.versionCode, kAppVersionCode + 1);
     });
 
-    test('当前版本常量与公式一致', () {
-      expect(kAppVersionCode, versionCodeOf(1, 1, 1));
-      expect(kAppVersionName, '1.1.1');
+    test('当前版本常量与公式一致（不硬编码版本号）', () {
+      final parts = parseSemVer(kAppVersionName)!;
+      expect(kAppVersionCode, versionCodeOf(parts[0], parts[1], parts[2]));
     });
   });
 }

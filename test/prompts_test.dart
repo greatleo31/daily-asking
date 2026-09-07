@@ -54,7 +54,24 @@ void main() {
     expect(p, isNot(contains('## 进行中')));
     expect(p, isNot(contains('## 风险与阻塞')));
     expect(p, isNot(contains('## 数据与可验证成果')));
-    expect(artifactPromptVersion, 'markdown.v3');
+  });
+
+  test('周报 markdown.v4：有序列表排版与第一人称计划，无 CoT/建议措辞', () {
+    final p = systemPromptFor(ArtifactType.weekly);
+    // 有序列表排版规则：四节有实质内容时输出 1. 编号列表。
+    expect(p, contains('有序列表'));
+    expect(p, contains('`1. 2. 3. …`'));
+    expect(p, contains('无内容才写「无」'));
+    // 第一人称专家/执行者计划口吻。
+    expect(p, contains('第一人称'));
+    expect(p, contains('下周我将'));
+    // 版本常量。
+    expect(artifactPromptVersion, 'markdown.v4');
+    // 无思维链章节与旧顾问措辞。
+    expect(p, isNot(contains('Workflow & CoT')));
+    expect(p, isNot(contains('必须明确包含「建议」字样')));
+    expect(p, isNot(contains('可以考虑')));
+    expect(p, isNot(contains('你应该')));
   });
 
   test('面试反馈保留逐条点评和补强章节且不生成评分', () {

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../companion/companion_avatar.dart';
 import '../../companion/companion_profile.dart';
 import '../../companion/companion_service.dart';
 import '../../core/models.dart';
@@ -179,11 +180,12 @@ class _TodayPageState extends State<TodayPage> {
   }
 }
 
-/// 伙伴主视觉：素材整图切换 + 成功保存后的低幅度舒展回应。
+/// 伙伴主视觉容器：文案/成长卡保持不变，头像素材与动画由共享
+/// [CompanionAvatar]（oneShot 舒展模式）提供。
 ///
-/// 阶段切换用轻量淡入淡出；`MediaQuery.disableAnimations` 启用时直接展示
-/// 最终图，不播放任何动画。只接收不可变快照，不直接读 Repository。
-class _CompanionHero extends StatefulWidget {
+/// `MediaQuery.disableAnimations` 启用时共享组件直接展示静态素材。
+/// 只接收不可变快照，不直接读 Repository。
+class _CompanionHero extends StatelessWidget {
   const _CompanionHero({
     required this.profile,
     required this.stage,
@@ -197,62 +199,13 @@ class _CompanionHero extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_CompanionHero> createState() => _CompanionHeroState();
-}
-
-class _CompanionHeroState extends State<_CompanionHero>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _stretch;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 520),
-    );
-    _stretch = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 1.04)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.04, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 60,
-      ),
-    ]).animate(_controller);
-  }
-
-  @override
-  void didUpdateWidget(covariant _CompanionHero oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.stretchTrigger != oldWidget.stretchTrigger) {
-      if (MediaQuery.disableAnimationsOf(context)) {
-        _controller.value = 1.0; // 减少动画：直接展示最终图
-      } else {
-        _controller.forward(from: 0);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final dayCopy = widget.profile.growthDays == 0
+    final dayCopy = profile.growthDays == 0
         ? CompanionService.preRecordCopy
-        : '一起留下了 ${widget.profile.growthDays} 天';
+        : '一起留下了 ${profile.growthDays} 天';
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -262,24 +215,10 @@ class _CompanionHeroState extends State<_CompanionHero>
         ),
         child: Row(
           children: [
-            SizedBox(
-              width: 112,
-              height: 112,
-              child: ScaleTransition(
-                scale: _stretch,
-                child: AnimatedSwitcher(
-                  duration: reduceMotion
-                      ? Duration.zero
-                      : const Duration(milliseconds: 350),
-                  child: Image.asset(
-                    widget.stage.assetPath,
-                    key: ValueKey(widget.stage.assetPath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.spa_outlined, size: 48),
-                  ),
-                ),
-              ),
+            CompanionAvatar(
+              stage: stage,
+              mode: CompanionAvatarMode.oneShot,
+              stretchTrigger: stretchTrigger,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -297,7 +236,7 @@ class _CompanionHeroState extends State<_CompanionHero>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          widget.stage.label,
+                          stage.label,
                           style: theme.textTheme.labelSmall
                               ?.copyWith(color: theme.colorScheme.primary),
                         ),
