@@ -12,6 +12,7 @@ android/app/key.properties
 /dist/
 /app-release.apk
 *.apk
+!update/*.apk
 *.aab
 *.symbols
 *.map.json
