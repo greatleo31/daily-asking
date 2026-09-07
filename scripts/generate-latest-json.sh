@@ -38,20 +38,30 @@ while [ "$#" -gt 0 ]; do
 done
 [ -f "$APK" ] || { echo "APK 不存在: $APK" >&2; exit 1; }
 
+# 寻找可用的 python 命令（兼容 Windows / Git-Bash / Linux，优先无 WSL shim 的真实二进制）
+PYTHON_BIN=""
+for cmd in python.exe python py python3; do
+  if "$cmd" -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+    PYTHON_BIN="$cmd"
+    break
+  fi
+done
+[ -n "$PYTHON_BIN" ] || { echo "未找到可用的 Python 环境" >&2; exit 1; }
+
 # 从 lib/core/version.dart 读版本（单一来源）。优先 grep -oP；执行机不支持时
 # 用 python 正则兜底，两种方式得到完全相同的值。
 if grep -oP "kAppVersionCode = \K[0-9]+" lib/core/version.dart >/dev/null 2>&1; then
   VNAME=$(grep -oP "kAppVersionName = '\K[^']+" lib/core/version.dart)
   VCODE=$(grep -oP "kAppVersionCode = \K[0-9]+" lib/core/version.dart)
 else
-  VNAME=$(python -c "import re;print(re.search(r\"kAppVersionName = '([^']+)'\", open('lib/core/version.dart',encoding='utf-8').read()).group(1))")
-  VCODE=$(python -c "import re;print(re.search(r'kAppVersionCode = (\d+)', open('lib/core/version.dart',encoding='utf-8').read()).group(1))")
+  VNAME=$("$PYTHON_BIN" -c "import re;print(re.search(r\"kAppVersionName = '([^']+)'\", open('lib/core/version.dart',encoding='utf-8').read()).group(1))")
+  VCODE=$("$PYTHON_BIN" -c "import re;print(re.search(r'kAppVersionCode = (\d+)', open('lib/core/version.dart',encoding='utf-8').read()).group(1))")
 fi
-SHA=$(python -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$APK")
+SHA=$("$PYTHON_BIN" -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$APK")
 
 mkdir -p "$(dirname "$OUT")"
-python - "$VNAME" "$VCODE" "$APK" "$CHANGELOG" "$MANDATORY" "$SHA" "$ASSET_URL" "$OUT" <<'PY'
-import io, json, os, sys
+"$PYTHON_BIN" -c '
+import io, json, os, sys, datetime
 vname, vcode, apk, changelog, mandatory, sha, asset_url, out = sys.argv[1:9]
 if asset_url:
     url = asset_url
@@ -63,10 +73,10 @@ payload = {
     "url": url,
     "changelog": changelog,
     "mandatory": mandatory == "true",
-    "releaseDate": __import__("datetime").date.today().isoformat(),
+    "releaseDate": datetime.date.today().isoformat(),
     "sha256": sha,
 }
 io.open(out, "w", encoding="utf-8").write(json.dumps(payload, ensure_ascii=False, indent=2))
 print("已生成 %s" % out)
 print(json.dumps(payload, ensure_ascii=False, indent=2))
-PY
+' "$VNAME" "$VCODE" "$APK" "$CHANGELOG" "$MANDATORY" "$SHA" "$ASSET_URL" "$OUT"

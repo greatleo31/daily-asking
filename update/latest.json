@@ -1,0 +1,9 @@
+{
+  "versionCode": 10202,
+  "versionName": "1.2.2",
+  "url": "https://gitee.com/yankehu/daily_asking/raw/main/update/liuhen-1.2.2.apk",
+  "changelog": "1.2.2 正式发布：提示词升级 markdown.v3、更新服务多源增强与工作室生成等待优化",
+  "mandatory": false,
+  "releaseDate": "2026-09-07",
+  "sha256": "195bc3793aac85395e41e4db9b5c19b2b310c8eb908906db883565afe86d64d6"
+}
