@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../../app/app_state.dart';
 import '../../companion/companion_avatar.dart';
 import '../../companion/companion_profile.dart';
+import '../../companion/companion_scene_card.dart';
 import '../../companion/companion_service.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
@@ -358,45 +359,18 @@ class _CompanionGrowthCardState extends State<_CompanionGrowthCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    child: Image.asset(
-                      stage.assetPath,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.spa_outlined, size: 32),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile.name ?? '晨昏伙伴',
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        profile.growthDays == 0
-                            ? CompanionService.preRecordCopy
-                            : '${stage.label} · 一起留下了 ${profile.growthDays} 天',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.secondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            CompanionSceneCard(
+              stage: stage,
+              name: profile.name,
+              height: 180,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              profile.growthDays == 0
+                  ? CompanionService.preRecordCopy
+                  : '${stage.label} · 一起留下了 ${profile.growthDays} 天',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.secondary),
             ),
             const SizedBox(height: 16),
             Container(
