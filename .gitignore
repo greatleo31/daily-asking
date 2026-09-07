@@ -46,6 +46,7 @@ migrate_working_dir/
 .pub/
 /coverage/
 # ===== 本地冒烟/截图临时物(不提交)=====
+/latest.json
 _shots_tmp/
 shots_tmp/
 shots_view/
