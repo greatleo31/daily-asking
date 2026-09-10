@@ -5,24 +5,40 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
+import '../../companion/companion_avatar.dart';
 import '../../core/export/markdown_exporter.dart';
 import '../../core/llm/llm_client.dart';
 import '../../core/models.dart';
 import '../../core/utils.dart';
 import '../../settings/settings_page.dart';
+import '../../settings/settings_repository.dart';
 import 'artifact_generation.dart';
 import 'artifact_library.dart';
 import 'artifact_view_page.dart';
+
+/// 生成调用函数签名（与 [OpenAiClient.complete] 一致）。生产默认走真实客户端；
+/// 测试可注入替身；BYOK 出站披露仍由页面流程统一处理，本 seam 不绕过。
+typedef GenerationCall =
+    Future<LlmResult> Function({
+      required LlmSettings settings,
+      required String apiKey,
+      required String system,
+      required String user,
+    });
 
 class StudioPage extends StatefulWidget {
   const StudioPage({
     super.key,
     this.initialEntryIds = const [],
     this.showAppBar = false,
+    this.generationCall,
   });
 
   final List<String> initialEntryIds;
   final bool showAppBar;
+
+  /// 测试 seam：缺省为真实 [OpenAiClient.complete]。
+  final GenerationCall? generationCall;
 
   @override
   State<StudioPage> createState() => _StudioPageState();
@@ -32,7 +48,7 @@ class _StudioPageState extends State<StudioPage> {
   final Map<String, bool> _selected = {};
   final _search = TextEditingController();
   String _query = '';
-  bool _busy = false;
+  ArtifactType? _generatingType;
   ArtifactLibraryFolder _folder = ArtifactLibraryFolder.all;
   ArtifactSortField _sortField = ArtifactSortField.date;
   bool _ascending = false;
@@ -113,15 +129,20 @@ class _StudioPageState extends State<StudioPage> {
     final ok = await _confirmDisclosure(context, payload);
     if (ok != true) return;
 
-    setState(() => _busy = true);
+    setState(() => _generatingType = type);
     final generatedAt = DateTime.now();
-    final result = await OpenAiClient().complete(
-      settings: settings,
-      apiKey: apiKey,
-      system: payload.buildSystemPrompt(type),
-      user: payload.buildUserMessage(referenceDate: generatedAt),
-    );
-    if (mounted) setState(() => _busy = false);
+    LlmResult result;
+    try {
+      final call = widget.generationCall ?? OpenAiClient().complete;
+      result = await call(
+        settings: settings,
+        apiKey: apiKey,
+        system: payload.buildSystemPrompt(type),
+        user: payload.buildUserMessage(referenceDate: generatedAt),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingType = null);
+    }
     if (!mounted) return;
     if (result.isError) {
       _showMessage(result.error!);
@@ -330,12 +351,14 @@ class _StudioPageState extends State<StudioPage> {
           ),
         ),
         const SizedBox(height: 10),
+        if (_generatingType != null)
+          _GenerationWaitingCard(type: _generatingType!),
         _GenButton(
           color: theme.colorScheme.primary,
           icon: Icons.assignment_outlined,
           title: '简历要点',
           subtitle: '整理成可投递的要点',
-          busy: _busy,
+          enabled: _generatingType == null,
           onTap: () => _generate(ArtifactType.resume),
         ),
         _GenButton(
@@ -343,7 +366,7 @@ class _StudioPageState extends State<StudioPage> {
           icon: Icons.calendar_view_week_outlined,
           title: '周报',
           subtitle: '整理工作进展',
-          busy: _busy,
+          enabled: _generatingType == null,
           onTap: () => _generate(ArtifactType.weekly),
         ),
         _GenButton(
@@ -351,7 +374,7 @@ class _StudioPageState extends State<StudioPage> {
           icon: Icons.question_answer_outlined,
           title: '面试反馈',
           subtitle: '反馈亮点、偏浅处和方向',
-          busy: _busy,
+          enabled: _generatingType == null,
           onTap: () => _generate(ArtifactType.interview),
         ),
       ],
@@ -683,13 +706,66 @@ class _SelectableEntry extends StatelessWidget {
   }
 }
 
+class _GenerationWaitingCard extends StatelessWidget {
+  const _GenerationWaitingCard({required this.type});
+
+  final ArtifactType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stage = context.select((AppState s) => s.companionStage);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          CompanionAvatar(
+            stage: stage,
+            mode: CompanionAvatarMode.loop,
+            size: 72,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '正在生成「${type.label}」…',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '整理记录中，完成后会自动打开产物。',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GenButton extends StatelessWidget {
   const _GenButton({
     required this.color,
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.busy,
+    required this.enabled,
     required this.onTap,
   });
 
@@ -697,23 +773,18 @@ class _GenButton extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final bool busy;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Card(
     margin: const EdgeInsets.only(bottom: 10),
     child: ListTile(
-      onTap: busy ? null : onTap,
+      onTap: enabled ? onTap : null,
+      enabled: enabled,
       leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        child: busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(icon, color: color),
+        backgroundColor: color.withValues(alpha: enabled ? 0.15 : 0.08),
+        child: Icon(icon, color: color.withValues(alpha: enabled ? 1 : 0.4)),
       ),
       title: Text(
         title,

@@ -11,10 +11,11 @@ void main() {
       expect(versionCodeOf(2, 0, 0), 20000);
     });
 
-    test('当前版本与 pubspec 同步（1.1.1+10101）', () {
-      expect(kAppVersionName, '1.1.1');
-      expect(kAppVersionCode, 10101);
-      expect(versionCodeOf(1, 1, 1), kAppVersionCode);
+    test('当前版本与 pubspec 同步（由 kAppVersionName 经公式推导）', () {
+      // 不硬编码具体版本号：未来 bump 不破坏本测试。
+      final parts = parseSemVer(kAppVersionName);
+      expect(parts, isNotNull);
+      expect(versionCodeOf(parts![0], parts[1], parts[2]), kAppVersionCode);
     });
 
     test('单调递增：patch/minor/major 提升都会增大 versionCode', () {
