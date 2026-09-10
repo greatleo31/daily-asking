@@ -78,4 +78,35 @@ void main() {
       expect(kAppVersionCode, versionCodeOf(parts[0], parts[1], parts[2]));
     });
   });
+
+  group('强制更新判定 isMandatoryFor', () {
+    UpdateInfo info({bool mandatory = false, int? minVersionCode}) => UpdateInfo(
+          versionCode: 10200,
+          versionName: '1.2.0',
+          url: 'u',
+          mandatory: mandatory,
+          minVersionCode: minVersionCode,
+        );
+
+    test('未声明 mandatory 且无 minVersionCode → 非强制', () {
+      expect(info().isMandatoryFor(10100), isFalse);
+    });
+
+    test('清单声明 mandatory → 强制（与 minVersionCode 无关）', () {
+      expect(info(mandatory: true).isMandatoryFor(10100), isTrue);
+      expect(
+        info(mandatory: true, minVersionCode: 10100).isMandatoryFor(10201),
+        isTrue,
+      );
+    });
+
+    test('当前版本低于 minVersionCode → 强制', () {
+      expect(info(minVersionCode: 10100).isMandatoryFor(10099), isTrue);
+    });
+
+    test('当前版本等于/高于 minVersionCode → 非强制', () {
+      expect(info(minVersionCode: 10100).isMandatoryFor(10100), isFalse);
+      expect(info(minVersionCode: 10100).isMandatoryFor(10201), isFalse);
+    });
+  });
 }

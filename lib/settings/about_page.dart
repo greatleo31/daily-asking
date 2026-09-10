@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/version.dart';
+import '../updater/update_dialogs.dart';
 import '../updater/update_info.dart';
 import '../app/app_state.dart';
 
@@ -17,7 +18,31 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   bool _checking = false;
-  bool _downloading = false;
+  String _lastChecked = '从未检查';
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshLastChecked();
+  }
+
+  /// 「上次检查」文本只在挂载时与每次检查后刷新，不在 build 里新建 Future——
+  /// 否则每次 rebuild（切主题、切开关）都会先闪一下「从未检查」再跳回真实时间。
+  Future<void> _refreshLastChecked() async {
+    final dt = await context.read<AppState>().updateService.lastCheckedAt;
+    if (!mounted) return;
+    if (dt == null) {
+      setState(() => _lastChecked = '从未检查');
+      return;
+    }
+    final local = dt.toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    setState(() {
+      _lastChecked =
+          '上次检查 ${local.year}-${two(local.month)}-${two(local.day)} '
+          '${two(local.hour)}:${two(local.minute)}';
+    });
+  }
 
   Future<void> _checkUpdate() async {
     if (_checking) return;
@@ -26,13 +51,15 @@ class _AboutPageState extends State<AboutPage> {
     final decision = await state.updateService.check();
     if (!mounted) return;
     setState(() => _checking = false);
+    await _refreshLastChecked();
+    if (!mounted) return;
     switch (decision) {
       case NoUpdate():
         _toast('已是最新版本');
       case UpdateCheckFailed(:final reason):
         _toast(reason == '更新服务未配置' ? '更新服务未配置' : '检查更新失败，请稍后重试');
       case UpdateAvailable(:final info):
-        if (info.mandatory) {
+        if (info.isMandatoryFor(kAppVersionCode)) {
           await _showMandatoryUpdate(info);
         } else {
           await _showNormalUpdate(info);
@@ -47,67 +74,24 @@ class _AboutPageState extends State<AboutPage> {
 
   Future<void> _startDownload(UpdateInfo info) async {
     final state = context.read<AppState>();
-    setState(() => _downloading = true);
     final ok = await state.updateService.downloadAndInstall(info);
     if (!mounted) return;
-    setState(() => _downloading = false);
     _toast(ok ? '已开始下载，可在通知栏查看进度' : '更新下载失败，请重试');
   }
 
   /// 非强制更新：可关闭，点「立即更新」才下载。
-  Future<void> _showNormalUpdate(UpdateInfo info) {
-    return showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('发现新版本 ${info.versionName}'),
-        content: SingleChildScrollView(
-          child: Text(
-            info.changelog.isNotEmpty ? info.changelog : '新版本已发布，建议更新。',
-            style: Theme.of(ctx).textTheme.bodyMedium,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('暂不更新'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _startDownload(info);
-            },
-            child: const Text('立即更新'),
-          ),
-        ],
-      ),
-    );
-  }
+  Future<void> _showNormalUpdate(UpdateInfo info) => showUpdateAvailableDialog(
+        context,
+        info,
+        onUpdate: () => _startDownload(info),
+      );
 
-  /// 强制更新：不可关闭（返回键/外部点击均无效），仅「立即更新」。
-  Future<void> _showMandatoryUpdate(UpdateInfo info) {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: Text('需要更新到 ${info.versionName}'),
-          content: SingleChildScrollView(
-            child: Text(
-              info.changelog.isNotEmpty ? info.changelog : '当前版本需要更新后才能继续使用。',
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: _downloading ? null : () => _startDownload(info),
-              child: Text(_downloading ? '正在下载…' : '立即更新'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  /// 强制更新：不可关闭（返回键/外部点击均无效），仅「立即更新」，带防重复点击。
+  Future<void> _showMandatoryUpdate(UpdateInfo info) => showMandatoryUpdateDialog(
+        context,
+        info,
+        onUpdate: () => _startDownload(info),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -193,12 +177,7 @@ class _AboutPageState extends State<AboutPage> {
                 ListTile(
                   leading: const Icon(Icons.system_update_alt),
                   title: const Text('检查更新'),
-                  subtitle: _checking
-                      ? const Text('检查中…')
-                      : FutureBuilder<String>(
-                          future: _lastCheckedText(),
-                          builder: (context, snap) => Text(snap.data ?? '从未检查'),
-                        ),
+                  subtitle: Text(_checking ? '检查中…' : _lastChecked),
                   trailing: _checking
                       ? const SizedBox(
                           width: 18,
@@ -214,16 +193,6 @@ class _AboutPageState extends State<AboutPage> {
         ],
       ),
     );
-  }
-
-  Future<String> _lastCheckedText() async {
-    final state = context.read<AppState>();
-    final dt = await state.updateService.lastCheckedAt;
-    if (dt == null) return '从未检查';
-    final local = dt.toLocal();
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '上次检查 ${local.year}-${two(local.month)}-${two(local.day)} '
-        '${two(local.hour)}:${two(local.minute)}';
   }
 
   Widget _privacyRow(ThemeData theme, String text) {

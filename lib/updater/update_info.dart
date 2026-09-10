@@ -40,8 +40,14 @@ class UpdateInfo {
   /// APK SHA-256，下载完成后校验（可选）。
   final String sha256;
 
-  /// 最低可升级版本；低于它提示先装中间版本（可选）。
+  /// 最低可升级版本；当前 versionCode 低于它时视为强制更新（可选）。
   final int? minVersionCode;
+
+  /// 当前版本是否必须更新：显式 [mandatory]，或当前 versionCode 低于
+  /// [minVersionCode]——发布方声明低于该版本不再支持，只能升级。
+  bool isMandatoryFor(int currentVersionCode) =>
+      mandatory ||
+      (minVersionCode != null && currentVersionCode < minVersionCode!);
 
   /// 解析 `latest.json`；关键字段不合法返回 null（视为检查失败，不崩溃）。
   static UpdateInfo? parse(String body) {

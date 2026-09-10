@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../artifacts/studio_page.dart';
+import '../core/version.dart';
 import '../evidence/evidence_page.dart';
 import '../journal/today_page.dart';
 import '../settings/settings_page.dart';
 import '../settings/settings_repository.dart';
+import '../updater/update_dialogs.dart';
 import '../updater/update_info.dart';
 import 'app_state.dart';
 
@@ -53,7 +55,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (!mounted) return;
     switch (decision) {
       case UpdateAvailable(:final info):
-        if (info.mandatory) {
+        if (info.isMandatoryFor(kAppVersionCode)) {
           await _showMandatoryUpdate(info);
         } else if (await state.updateService.isAutoUpdateEnabled()) {
           final ok = await state.updateService.downloadAndInstall(info);
@@ -65,39 +67,51 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               ),
             ),
           );
+        } else {
+          // 「自动更新」关闭时开关文案承诺「发现新版本时仅提示」，启动检查因此
+          // 给一次轻提示而不是完全静默——否则不进「关于」页的用户永远不知道有新版。
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('发现新版本 ${info.versionName}'),
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: '查看',
+                onPressed: () => _showNormalUpdate(info),
+              ),
+            ),
+          );
         }
       default:
         break; // NoUpdate / 失败：启动检查静默。
     }
   }
 
+  /// 非强制更新：可关闭，点「立即更新」才下载（启动提示的「查看」入口）。
+  Future<void> _showNormalUpdate(UpdateInfo info) {
+    final state = context.read<AppState>();
+    return showUpdateAvailableDialog(
+      context,
+      info,
+      onUpdate: () async {
+        final ok = await state.updateService.downloadAndInstall(info);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok ? '已开始下载，可在通知栏查看进度' : '更新下载失败，请重试'),
+          ),
+        );
+      },
+    );
+  }
+
   /// 强制更新：不可关闭，返回键/外部点击均无效。
   Future<void> _showMandatoryUpdate(UpdateInfo info) {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: Text('需要更新到 ${info.versionName}'),
-          content: SingleChildScrollView(
-            child: Text(
-              info.changelog.isNotEmpty ? info.changelog : '当前版本需要更新后才能继续使用。',
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () async {
-                await context.read<AppState>().updateService.downloadAndInstall(
-                  info,
-                );
-              },
-              child: const Text('立即更新'),
-            ),
-          ],
-        ),
-      ),
+    final state = context.read<AppState>();
+    return showMandatoryUpdateDialog(
+      context,
+      info,
+      onUpdate: () => state.updateService.downloadAndInstall(info),
     );
   }
 
