@@ -1,8 +1,8 @@
 {
-  "versionCode": 10202,
-  "versionName": "1.2.2",
-  "url": "https://gitee.com/yankehu/daily_asking/releases/download/v1.2.2/liuhen-1.2.2.apk",
-  "changelog": "1.2.2 正式发布：提示词升级 markdown.v3、更新服务多源增强与工作室等待状态优化",
+  "versionCode": 10203,
+  "versionName": "1.2.3",
+  "url": "https://gitee.com/yankehu/daily_asking/releases/download/v1.2.3/liuhen-1.2.3.apk",
+  "changelog": "1.2.3 正式发布：prompts 引擎升级 markdown.v3（边界规则重写、输出去元数据化、排版规则更新、新增 Workflow & CoT 四步推导），测试同步更新",
   "mandatory": false,
   "releaseDate": "2026-09-07",
   "sha256": "195bc3793aac85395e41e4db9b5c19b2b310c8eb908906db883565afe86d64d6"

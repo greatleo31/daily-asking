@@ -21,11 +21,13 @@ VC=$((MAJOR * 10000 + MINOR * 100 + PATCH))
 
 # pubspec.yaml
 if [[ "$(uname -s)" == *MINGW* || "$(uname -s)" == *MSYS* ]]; then
-  # CRLF 安全：先把行尾统一为 LF，改完再还原
+  # CRLF 安全：先把行尾统一为 LF，改完再还原。
+  # 读文件必须带 newline=''（关闭通用换行转换），否则文本模式下 CRLF 已被折成 LF，
+  # `'\r\n' in s` 恒为 False，还原分支永不生效，整个文件被静默改写成 LF。
   python - "$NEW" "$VC" <<'PY'
 import io, sys
 p = 'pubspec.yaml'
-s = io.open(p, encoding='utf-8').read()
+s = io.open(p, encoding='utf-8', newline='').read()
 crlf = '\r\n' in s
 s = s.replace('\r\n', '\n')
 import re
@@ -38,7 +40,7 @@ PY
   python - "$NEW" "$VC" <<'PY'
 import io, sys
 p = 'lib/core/version.dart'
-s = io.open(p, encoding='utf-8').read()
+s = io.open(p, encoding='utf-8', newline='').read()
 crlf = '\r\n' in s
 s = s.replace('\r\n', '\n')
 import re
