@@ -83,12 +83,15 @@ class AppState extends ChangeNotifier {
     return AppState._build(store);
   }
 
-  /// 测试专用构造：注入任意 [StorageService]，绕开 SharedPreferences。
+  /// 测试专用构造：注入任意 [StorageService]，绕开 SharedPreferences；
+  /// 还可注入自定义 [UpdateService]（如假 http 客户端）以驱动更新提示流程。
   @visibleForTesting
-  static Future<AppState> debug(StorageService store) async =>
-      AppState._build(store);
+  static Future<AppState> debug(
+    StorageService store, {
+    UpdateService? updateService,
+  }) async => AppState._build(store, updateService: updateService);
 
-  static AppState _build(StorageService store) {
+  static AppState _build(StorageService store, {UpdateService? updateService}) {
     final jsonStore = JsonStore(store);
     final entryRepo = LocalEntryRepository(jsonStore);
     final evidenceRepo = LocalEvidenceRepository(jsonStore);
@@ -96,13 +99,12 @@ class AppState extends ChangeNotifier {
     final settingsRepo = SettingsRepository(store);
     final companionRepo = LocalCompanionRepository(jsonStore);
     final updatePrefs = UpdatePrefs(store);
-    final updateService = UpdateService(updatePrefs);
     return AppState._(
       entries: entryRepo,
       artifactRepo: artifactRepo,
       settings: settingsRepo,
       evidenceService: EvidenceService(entryRepo, evidenceRepo),
-      updateService: updateService,
+      updateService: updateService ?? UpdateService(updatePrefs),
       companionRepo: companionRepo,
     );
   }
