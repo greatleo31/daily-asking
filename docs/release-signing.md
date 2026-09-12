@@ -1,9 +1,10 @@
 # 发布签名（Android Release 签名）
 
-> **当前状态（2026-09-11）**：Gradle 侧配置与本文档已就绪，但 **keystore 尚未生成**，
-> `android/key.properties` 不存在 —— 因此 release 包仍走 debug 签名，现有构建流程不受影响。
-> 把 keystore 建好、`android/key.properties` 填好之后，下一次 `sh scripts/build-release.sh`
-> 会自动改用正式签名，无需再改代码。
+> **当前状态（2026-09-12）**：keystore 已生成并接入 —— `D:\keys\liuhen-release.jks`
+> （PKCS12，别名 `liuhen`，证书 SHA-256 指纹
+> `B0:60:4C:A5:31:44:EC:8E:8A:75:CB:F7:18:ED:54:27:47:62:A5:B7:EF:F1:B3:FB:12:9E:06:2F:A3:1D:48:39`），
+> `android/key.properties` 已就位（不进 git）。**自 v1.2.4 起 release 包使用正式签名**；
+> 此前发布的 v1.2.3 是 debug 签名，因此老用户升级需要**卸载重装**（见 §5）。
 
 关联：[`docs/02-版本与更新机制.md`](02-版本与更新机制.md) §6.4（发布步骤）、§7（已知限制）、
 `android/key.properties.example`、`scripts/build-release.sh`、`scripts/generate-latest-json.sh`。
@@ -32,7 +33,8 @@ Android 用「签名证书」来确定**一个安装包是不是某个已装应�
   - 存在 `android/key.properties` → 使用其中的 `release` 签名配置；
   - 不存在 → 退回 `signingConfigs.getByName("debug")`，保证 clone 后 `flutter build apk --release`
     与 `flutter run --release` 仍可直接跑通。
-- 当前 `build/app/outputs/flutter-apk/app-release.apk` 的签名者实测为 `CN=Android Debug`：
+- 在 keystore 生成之前（≤ v1.2.3），`build/app/outputs/flutter-apk/app-release.apk` 的签名者实测为
+  `CN=Android Debug`（即 `~/.android/debug.keystore`）：
 
   ```bash
   /d/developsoftware/android-sdk-daily-asking/build-tools/36.0.0/apksigner.bat \
