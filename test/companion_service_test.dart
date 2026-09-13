@@ -43,7 +43,7 @@ void main() {
       for (final d in [0, 1, 6]) {
         expect(service.stageFor(d), CompanionStage.sprout, reason: 'days=$d');
       }
-      expect(CompanionStage.sprout.assetPath, 'assets/companion/day_01.png');
+      expect(CompanionStage.sprout.assetPath, 'assets/companion/day_01.jpg');
       expect(CompanionStage.sprout.label, '小芽');
     });
 
@@ -51,21 +51,21 @@ void main() {
       for (final d in [7, 13]) {
         expect(service.stageFor(d), CompanionStage.bud, reason: 'days=$d');
       }
-      expect(CompanionStage.bud.assetPath, 'assets/companion/day_07.png');
+      expect(CompanionStage.bud.assetPath, 'assets/companion/day_07.jpg');
     });
 
     test('14–29 天为白花（day_14）', () {
       for (final d in [14, 29]) {
         expect(service.stageFor(d), CompanionStage.bloom, reason: 'days=$d');
       }
-      expect(CompanionStage.bloom.assetPath, 'assets/companion/day_14.png');
+      expect(CompanionStage.bloom.assetPath, 'assets/companion/day_14.jpg');
     });
 
     test('30 天及以上为粉花（day_30）', () {
       for (final d in [30, 31, 100]) {
         expect(service.stageFor(d), CompanionStage.fullBloom, reason: 'days=$d');
       }
-      expect(CompanionStage.fullBloom.assetPath, 'assets/companion/day_30.png');
+      expect(CompanionStage.fullBloom.assetPath, 'assets/companion/day_30.jpg');
     });
 
 

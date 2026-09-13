@@ -10,18 +10,28 @@ library;
 /// 四个固定视觉阶段及其素材路径。
 ///
 /// 首次记录前与第 1–6 天共用 day_01（小芽）素材；7–13 花苞；
-/// 14–29 白花；30 天及以上粉花加蜜蜂。第 1 天素材底部藤蔓为有意设计。
+/// 14–29 白花；30 天及以上粉花加蜜蜂。四张素材都是自带水岸草地场景的
+/// 整幅插画（1024×1024 不透明 JPEG），直接整图展示，不做图层拆分。
 enum CompanionStage {
-  sprout('小芽', 'assets/companion/day_01.png'),
-  bud('花苞', 'assets/companion/day_07.png'),
-  bloom('白花', 'assets/companion/day_14.png'),
-  fullBloom('粉花', 'assets/companion/day_30.png');
+  sprout('小芽', 'assets/companion/day_01.jpg'),
+  bud('花苞', 'assets/companion/day_07.jpg'),
+  bloom('白花', 'assets/companion/day_14.jpg'),
+  fullBloom('粉花', 'assets/companion/day_30.jpg');
 
   const CompanionStage(this.label, this.assetPath);
 
   final String label;
   final String assetPath;
 }
+
+/// 伙伴待机动画素材：自带完整场景的循环动图（116 帧 / 5080ms）。
+///
+/// 生成等待蒙层与工作室画报大卡片共用同一份动图，避免两处各写一遍路径。
+const String companionIdleSceneAsset = 'assets/companion/bloom_idle.webp';
+
+/// [companionIdleSceneAsset] 首帧派生的模糊压暗幕布，用于铺满异形留白。
+const String companionIdleSceneBackdropAsset =
+    'assets/companion/bloom_idle_backdrop.jpg';
 
 /// 成长节点（达到时展示一次阶段提示与节点语录）。
 const companionMilestones = [1, 7, 14, 30];
