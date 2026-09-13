@@ -1,9 +1,9 @@
 {
-  "versionCode": 10204,
-  "versionName": "1.2.4",
-  "url": "https://gitee.com/yankehu/daily_asking/releases/download/v1.2.4/liuhen-1.2.4.apk",
-  "changelog": "1.2.4 正式发布：修复「检查更新」链路（此前版本未内嵌更新源，始终提示「更新服务未配置」），代码版本号与包版本号对齐；本版起改用正式发布签名，安装前需先卸载旧版（本地记录请先导出）。",
+  "versionCode": 10205,
+  "versionName": "1.2.5",
+  "url": "https://gitee.com/yankehu/daily_asking/releases/download/v1.2.5/liuhen-1.2.5.apk",
+  "changelog": "1.2.5：首页陪伴场景卡换新素材（四个成长阶段改用整幅插画）；生成产物时新增全屏等待蒙层，调用 AI 服务期间展示伙伴动画。包内素材改为 JPG/WebP，体积更小。",
   "mandatory": false,
-  "releaseDate": "2026-09-12",
-  "sha256": "3b2ce5d2bd8cfb3989a2e5d3700de228cd5c076c671eea92e57393cafcd7a01f"
+  "releaseDate": "2026-09-13",
+  "sha256": "fe0859b68769006f3aad4b0e968885450d01073569b2fa24fe6b917e81add148"
 }

@@ -16,6 +16,7 @@ void main() {
             stage: CompanionStage.sprout,
             name: '小豆芽',
             statusText: 'AI 构思中…',
+            showSpinner: true,
             height: 200,
           ),
         ),

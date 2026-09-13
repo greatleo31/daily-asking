@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_state.dart';
-import '../../companion/companion_avatar.dart';
+import '../../companion/companion_scene_card.dart';
 import '../../core/export/markdown_exporter.dart';
 import '../../core/llm/llm_client.dart';
 import '../../core/models.dart';
@@ -15,6 +15,7 @@ import '../../settings/settings_repository.dart';
 import 'artifact_generation.dart';
 import 'artifact_library.dart';
 import 'artifact_view_page.dart';
+import 'generation_waiting_overlay.dart';
 
 /// 生成调用函数签名（与 [OpenAiClient.complete] 一致）。生产默认走真实客户端；
 /// 测试可注入替身；BYOK 出站披露仍由页面流程统一处理，本 seam 不绕过。
@@ -53,6 +54,8 @@ class _StudioPageState extends State<StudioPage> {
   ArtifactSortField _sortField = ArtifactSortField.date;
   bool _ascending = false;
   String? _lastCreatedArtifactId;
+  _WaitingOverlaySession? _waiting;
+  bool _waitingDismissed = false;
 
   @override
   void initState() {
@@ -64,6 +67,12 @@ class _StudioPageState extends State<StudioPage> {
 
   @override
   void dispose() {
+    final waiting = _waiting;
+    if (waiting != null) {
+      _waiting = null;
+      // 页面销毁时收尾残留的全屏蒙层，避免遮罩留在屏幕上。
+      WidgetsBinding.instance.addPostFrameCallback((_) => waiting.close());
+    }
     _search.dispose();
     super.dispose();
   }
@@ -127,9 +136,14 @@ class _StudioPageState extends State<StudioPage> {
     if (!mounted || apiKey == null) return;
     final payload = OutboundPayload(entries: chosen, artifactType: type);
     final ok = await _confirmDisclosure(context, payload);
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
 
-    setState(() => _generatingType = type);
+    setState(() {
+      _generatingType = type;
+      _waitingDismissed = false;
+    });
+    _showWaitingOverlay(type);
+    final waiting = _waiting;
     final generatedAt = DateTime.now();
     LlmResult result;
     try {
@@ -143,8 +157,13 @@ class _StudioPageState extends State<StudioPage> {
     } finally {
       if (mounted) setState(() => _generatingType = null);
     }
-    if (!mounted) return;
+    if (!mounted) {
+      await _closeWaitingOverlay();
+      return;
+    }
     if (result.isError) {
+      await _closeWaitingOverlay();
+      if (!mounted) return;
       _showMessage(result.error!);
       return;
     }
@@ -157,16 +176,79 @@ class _StudioPageState extends State<StudioPage> {
       generatedAt: generatedAt,
     );
     await state.updateArtifact(artifact);
-    if (!mounted) return;
+    if (!mounted) {
+      await _closeWaitingOverlay();
+      return;
+    }
     setState(() => _lastCreatedArtifactId = artifact.id);
     Future<void>.delayed(const Duration(milliseconds: 1400), () {
       if (mounted && _lastCreatedArtifactId == artifact.id) {
         setState(() => _lastCreatedArtifactId = null);
       }
     });
+
+    if (waiting != null && waiting.userDismissed) {
+      // 用户已点开空白处退到内嵌画报大卡片：只提示任务完成，不打断当前视线。
+      _waiting = null;
+      _showMessage(
+        '「${type.label}」已生成',
+        action: SnackBarAction(
+          label: '查看',
+          onPressed: () {
+            _open(artifact.id);
+          },
+        ),
+      );
+      return;
+    }
+
+    // 用户仍停留在全屏等待：收起蒙层后平滑切换到 Markdown 产物页。
+    await _closeWaitingOverlay();
+    if (!mounted) return;
     await Future<void>.delayed(const Duration(milliseconds: 260));
     if (!mounted) return;
     await _open(artifact.id);
+  }
+
+  /// 展示全屏等待蒙层；用户主动关闭时只记录状态，蒙层自身负责退出。
+  void _showWaitingOverlay(ArtifactType type) {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final session = _WaitingOverlaySession(navigator);
+    _waiting = session;
+    // 蒙层是进入等待时的一次快照，读一次即可，无需订阅变化。
+    final companion = context.read<AppState>();
+    final stage = companion.companionStage;
+    final profile = companion.companion;
+    final route = PageRouteBuilder<void>(
+      opaque: false,
+      barrierDismissible: false,
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (_, _, _) => GenerationWaitingOverlay(
+        type: type,
+        stage: stage,
+        name: profile.name,
+        onDismiss: () {
+          session.userDismissed = true;
+          if (mounted) setState(() => _waitingDismissed = true);
+        },
+      ),
+      transitionsBuilder: (_, animation, _, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: child,
+      ),
+    );
+    session.attach(route);
+    session.pushed = navigator.push(route);
+  }
+
+  /// 收起全屏等待蒙层，并等待淡出结束，保证后续页面切换平滑。
+  Future<void> _closeWaitingOverlay() async {
+    final session = _waiting;
+    _waiting = null;
+    if (session == null) return;
+    session.close();
+    await session.pushed;
   }
 
   Future<bool?> _showConfigureGuard(BuildContext context) => showDialog<bool>(
@@ -251,11 +333,11 @@ class _StudioPageState extends State<StudioPage> {
     _showMessage('已删除');
   }
 
-  void _showMessage(String message) {
+  void _showMessage(String message, {SnackBarAction? action}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: Text(message), action: action));
   }
 
   void _selectFolder(ArtifactLibraryFolder folder) {
@@ -352,7 +434,10 @@ class _StudioPageState extends State<StudioPage> {
         ),
         const SizedBox(height: 10),
         if (_generatingType != null)
-          _GenerationWaitingCard(type: _generatingType!),
+          _GenerationWaitingCard(
+            type: _generatingType!,
+            autoOpen: !_waitingDismissed,
+          ),
         _GenButton(
           color: theme.colorScheme.primary,
           icon: Icons.assignment_outlined,
@@ -547,55 +632,59 @@ class _ArtifactTile extends StatelessWidget {
               : theme.colorScheme.outlineVariant,
         ),
       ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(Icons.description_outlined, color: color),
-        title: Text(
-          artifactDisplayName(artifact),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          '${artifact.type.label} · ${artifact.updatedAt.cnLabel}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.secondary,
+      // 高亮态给容器上了底色，ListTile 的水波纹需落在自己的 Material 上。
+      child: Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          onTap: onTap,
+          leading: Icon(Icons.description_outlined, color: color),
+          title: Text(
+            artifactDisplayName(artifact),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        trailing: PopupMenuButton<_ArtifactFileAction>(
-          tooltip: '文件操作',
-          onSelected: (action) {
-            switch (action) {
-              case _ArtifactFileAction.view:
-                onTap();
-              case _ArtifactFileAction.download:
-                onDownload();
-              case _ArtifactFileAction.delete:
-                onDelete();
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: _ArtifactFileAction.view,
-              child: ListTile(
-                leading: Icon(Icons.visibility_outlined),
-                title: Text('查看'),
-              ),
+          subtitle: Text(
+            '${artifact.type.label} · ${artifact.updatedAt.cnLabel}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.secondary,
             ),
-            PopupMenuItem(
-              value: _ArtifactFileAction.download,
-              child: ListTile(
-                leading: Icon(Icons.download_outlined),
-                title: Text('下载 Markdown'),
+          ),
+          trailing: PopupMenuButton<_ArtifactFileAction>(
+            tooltip: '文件操作',
+            onSelected: (action) {
+              switch (action) {
+                case _ArtifactFileAction.view:
+                  onTap();
+                case _ArtifactFileAction.download:
+                  onDownload();
+                case _ArtifactFileAction.delete:
+                  onDelete();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _ArtifactFileAction.view,
+                child: ListTile(
+                  leading: Icon(Icons.visibility_outlined),
+                  title: Text('查看'),
+                ),
               ),
-            ),
-            PopupMenuItem(
-              value: _ArtifactFileAction.delete,
-              child: ListTile(
-                leading: Icon(Icons.delete_outline),
-                title: Text('删除'),
+              PopupMenuItem(
+                value: _ArtifactFileAction.download,
+                child: ListTile(
+                  leading: Icon(Icons.download_outlined),
+                  title: Text('下载 Markdown'),
+                ),
               ),
-            ),
-          ],
+              PopupMenuItem(
+                value: _ArtifactFileAction.delete,
+                child: ListTile(
+                  leading: Icon(Icons.delete_outline),
+                  title: Text('删除'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -707,50 +796,36 @@ class _SelectableEntry extends StatelessWidget {
 }
 
 class _GenerationWaitingCard extends StatelessWidget {
-  const _GenerationWaitingCard({required this.type});
+  const _GenerationWaitingCard({required this.type, required this.autoOpen});
 
   final ArtifactType type;
+
+  /// 用户是否仍停留在全屏等待蒙层（否则完成后只提示、不再自动打开产物）。
+  final bool autoOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final stage = context.select((AppState s) => s.companionStage);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Row(
+    final profile = context.select((AppState s) => s.companion);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CompanionAvatar(
+          CompanionSceneCard(
             stage: stage,
-            mode: CompanionAvatarMode.loop,
-            size: 72,
+            name: profile.name,
+            statusText: '正在生成「${type.label}」…',
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '正在生成「${type.label}」…',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '整理记录中，完成后会自动打开产物。',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              autoOpen ? '整理记录中，完成后会自动打开产物。' : '整理记录中…',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+              ),
             ),
           ),
         ],
@@ -801,4 +876,27 @@ class _GenButton extends StatelessWidget {
       trailing: const Icon(Icons.chevron_right),
     ),
   );
+}
+
+/// 全屏等待蒙层在页面侧的一次会话：记录路由、用户是否主动关闭，
+/// 以及在生成完成时安全地收起蒙层（只收起自己压在最上层的那一次）。
+class _WaitingOverlaySession {
+  _WaitingOverlaySession(this.navigator);
+
+  final NavigatorState navigator;
+  Route<void>? _route;
+
+  /// 蒙层路由被弹出后完成的 future，用于等待淡出动画结束。
+  Future<void>? pushed;
+
+  /// 用户是否主动关闭了蒙层。
+  bool userDismissed = false;
+
+  void attach(Route<void> route) => _route = route;
+
+  void close() {
+    final route = _route;
+    if (route == null || !route.isActive || !route.isCurrent) return;
+    navigator.pop();
+  }
 }
