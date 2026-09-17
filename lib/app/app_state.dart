@@ -14,6 +14,8 @@ import '../companion/companion_repository.dart';
 import '../companion/companion_service.dart';
 import '../core/models.dart';
 import '../core/storage/storage.dart';
+import '../core/transfer/import_plan.dart';
+import '../core/transfer/transfer_schema.dart';
 import '../core/utils.dart';
 import '../evidence/evidence_repository.dart';
 import '../evidence/evidence_service.dart';
@@ -61,6 +63,8 @@ class SaveRollbackIncomplete implements Exception {
 class AppState extends ChangeNotifier {
   AppState._({
     required this._entries,
+    required this._evidenceRepo,
+    required this._jsonStore,
     required this._artifactRepo,
     required this._settings,
     required this._evidenceService,
@@ -70,6 +74,8 @@ class AppState extends ChangeNotifier {
 
   /// 依赖全部由 [AppState.create] 一次性注入。
   final EntryRepository _entries;
+  final EvidenceRepository _evidenceRepo;
+  final JsonStore _jsonStore;
   final ArtifactRepository _artifactRepo;
   final SettingsRepository _settings;
   final EvidenceService _evidenceService;
@@ -101,6 +107,8 @@ class AppState extends ChangeNotifier {
     final updatePrefs = UpdatePrefs(store);
     return AppState._(
       entries: entryRepo,
+      evidenceRepo: evidenceRepo,
+      jsonStore: jsonStore,
       artifactRepo: artifactRepo,
       settings: settingsRepo,
       evidenceService: EvidenceService(entryRepo, evidenceRepo),
@@ -245,6 +253,74 @@ class AppState extends ChangeNotifier {
     await _refreshArtifacts();
     await _refreshSettings();
     await _refreshCompanion();
+  }
+
+  // ---- 数据交换（不包含设置、产物或伙伴成长） ----
+
+  /// 从持久化层读取完整快照，不依赖页面或长期 Repository 缓存。
+  Future<TransferData> exportTransferData() async {
+    final entries = LocalEntryRepository(_jsonStore);
+    final evidence = LocalEvidenceRepository(_jsonStore);
+    return TransferData(
+      entries: await entries.list(),
+      questions: await evidence.listQuestions(),
+      answers: await evidence.listAnswers(),
+    );
+  }
+
+  /// 调用方须先完成自动备份。只接受新增项，不生成追问、不记伙伴成长。
+  /// 跨 key 写入不是事务：失败时刷新已落盘的部分并继续抛出原始异常。
+  Future<void> importEntries(ImportPlan plan) async {
+    if (plan.entries.isEmpty &&
+        plan.questions.isEmpty &&
+        plan.answers.isEmpty) {
+      return;
+    }
+    final existing = await exportTransferData();
+    final entryIds = existing.entries.map((e) => e.id).toSet();
+    final questionIds = existing.questions.map((q) => q.id).toSet();
+    final answerIds = existing.answers.map((a) => a.id).toSet();
+    final newEntryIds = <String>{};
+    final newQuestionIds = <String>{};
+    for (final entry in plan.entries) {
+      if (!entryIds.add(entry.id)) {
+        throw StateError('导入计划已过期或包含重复记录，请重新预览');
+      }
+      newEntryIds.add(entry.id);
+    }
+    for (final question in plan.questions) {
+      if (!questionIds.add(question.id) ||
+          !newEntryIds.contains(question.entryId)) {
+        throw StateError('导入追问存在 ID 冲突或无对应新增记录，请重新预览');
+      }
+      newQuestionIds.add(question.id);
+    }
+    for (final answer in plan.answers) {
+      if (!answerIds.add(answer.id) ||
+          !newQuestionIds.contains(answer.questionId)) {
+        throw StateError('导入回答存在 ID 冲突或无对应新增追问，请重新预览');
+      }
+    }
+    try {
+      await _entries.saveAll(plan.entries);
+      await _evidenceRepo.saveAll(
+        questions: plan.questions,
+        answers: plan.answers,
+      );
+    } catch (error, stack) {
+      try {
+        await _refreshEvidence();
+      } catch (_) {
+        // 无法刷新时保留最后已知快照；不掩盖原始写入失败，也不声称回滚。
+      }
+      notifyListeners();
+      Error.throwWithStackTrace(error, stack);
+    }
+    try {
+      await _refreshAfterSave();
+    } finally {
+      notifyListeners();
+    }
   }
 
   // ---- 今日 / 记录操作 ----

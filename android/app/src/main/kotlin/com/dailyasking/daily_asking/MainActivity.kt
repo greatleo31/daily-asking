@@ -61,11 +61,13 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, exportChannelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "getBackupDirectory" -> result.success(File(filesDir, "backup").absolutePath)
                     "shareMarkdown" -> shareMarkdown(
                         call.argument<String>("fileName"),
                         call.argument<String>("content"),
                         result
                     )
+                    "shareFiles" -> shareFiles(call.argument<List<Map<String, String>>>("files"), result)
                     else -> result.notImplemented()
                 }
             }
@@ -194,17 +196,59 @@ class MainActivity : FlutterActivity() {
             file.writeText(content ?: "", Charsets.UTF_8)
             val uri = UpdateFileProvider.contentUri(this, file.name)
             val send = Intent(Intent.ACTION_SEND).apply {
-                type = "text/markdown"
+                type = if (name.endsWith(".json", ignoreCase = true)) "application/json" else "text/markdown"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, name)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 clipData = ClipData.newUri(contentResolver, name, uri)
             }
-            startActivity(Intent.createChooser(send, "导出 Markdown"))
+            val title = if (name.endsWith(".json", ignoreCase = true)) "导出数据" else "导出 Markdown"
+            startActivity(Intent.createChooser(send, title))
             result.success(true)
         } catch (e: Exception) {
             toast("导出失败，请重试")
             result.error("export_failed", "导出失败", e.message)
+        }
+    }
+
+    /** 分片 JSON：全部写入应用私有目录后才展示一个多文件分享面板。 */
+    private fun shareFiles(files: List<Map<String, String>>?, result: MethodChannel.Result) {
+        try {
+            require(!files.isNullOrEmpty())
+            val names = files.map { item ->
+                val name = requireNotNull(item["fileName"])
+                require(name.isNotBlank() && name.endsWith(".json", ignoreCase = true))
+                require(name != "." && name != ".." && !name.contains('/') && !name.contains('\\'))
+                requireNotNull(item["content"])
+                name
+            }
+            require(names.toSet().size == names.size)
+            val dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+            if (!dir.exists()) require(dir.mkdirs())
+            // 写入失败时不打开分享器，避免向用户交付不完整的一组文件。
+            val uris = ArrayList<Uri>()
+            files.forEachIndexed { index, item ->
+                val file = File(dir, names[index])
+                file.writeText(requireNotNull(item["content"]), Charsets.UTF_8)
+                uris.add(UpdateFileProvider.contentUri(this, file.name))
+            }
+            val clips = ClipData.newUri(contentResolver, "留痕数据", uris.first())
+            uris.drop(1).forEach { clips.addItem(ClipData.Item(it)) }
+            val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "application/json"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                putExtra(Intent.EXTRA_SUBJECT, "留痕数据（共 ${uris.size} 个文件）")
+                clipData = clips
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(send, "导出数据").apply {
+                clipData = clips
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            })
+            result.success(true)
+        } catch (_: Exception) {
+            toast("导出失败，请重试")
+            result.error("export_failed", "导出失败", null)
         }
     }
 

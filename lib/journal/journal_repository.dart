@@ -11,6 +11,7 @@ abstract class EntryRepository {
   Future<List<Entry>> list();
   Future<Entry?> find(String id);
   Future<void> save(Entry entry);
+  Future<void> saveAll(List<Entry> entries);
   Future<void> delete(String id);
 }
 
@@ -49,24 +50,41 @@ class LocalEntryRepository implements EntryRepository {
   @override
   Future<void> save(Entry entry) async {
     await _ensure();
-    final i = _cache.indexWhere((e) => e.id == entry.id);
+    final next = List<Entry>.of(_cache);
+    final i = next.indexWhere((e) => e.id == entry.id);
     if (i >= 0) {
-      _cache[i] = entry.copy();
+      next[i] = entry.copy();
     } else {
-      _cache.add(entry.copy());
+      next.add(entry.copy());
     }
-    _cache.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    await _persist();
+    await _persist(next);
+  }
+
+  /// 合并最新持久化数据，一批只写一次；成功前不发布候选缓存。
+  @override
+  Future<void> saveAll(List<Entry> entries) async {
+    final rows = await _store.readList(_key);
+    final merged = <String, Entry>{
+      for (final row in rows) row['id'] as String: Entry.fromJson(row),
+      for (final entry in entries)
+        entry.id: Entry.fromJson({
+          ...entry.toJson(),
+          'tags': List<String>.of(entry.tags),
+        }),
+    };
+    await _persist(merged.values.toList());
+    _loaded = true;
   }
 
   @override
   Future<void> delete(String id) async {
     await _ensure();
-    _cache.removeWhere((e) => e.id == id);
-    await _persist();
+    await _persist(_cache.where((e) => e.id != id).toList());
   }
 
-  Future<void> _persist() async {
-    await _store.writeList(_key, _cache.map((e) => e.toJson()).toList());
+  Future<void> _persist(List<Entry> next) async {
+    next.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    await _store.writeList(_key, next.map((e) => e.toJson()).toList());
+    _cache = next;
   }
 }
