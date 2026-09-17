@@ -23,14 +23,24 @@ const Duration kWaitingHintFadeIn = Duration(milliseconds: 900);
 class GenerationWaitingOverlay extends StatefulWidget {
   const GenerationWaitingOverlay({
     super.key,
-    required this.type,
+    this.type,
+    this.title,
+    this.hint,
+    this.dismissible = true,
     this.stage,
     this.name,
     this.onDismiss,
   });
 
   /// 正在生成的产物类型，用于状态文案。
-  final ArtifactType type;
+  final ArtifactType? type;
+
+  /// 通用等待文案；省略时保留工作室生成文案。
+  final String? title;
+  final String? hint;
+
+  /// 为 false 时整个等待期间均不可通过点击或系统返回关闭。
+  final bool dismissible;
 
   /// 伙伴当前成长阶段（可选，展示在状态栏）。
   final CompanionStage? stage;
@@ -80,7 +90,7 @@ class _GenerationWaitingOverlayState extends State<GenerationWaitingOverlay> {
   }
 
   void _requestDismiss() {
-    if (!_hintVisible || _closing) return;
+    if (!widget.dismissible || !_hintVisible || _closing) return;
     _closing = true;
     widget.onDismiss?.call();
     Navigator.of(context).pop();
@@ -207,7 +217,10 @@ class _GenerationWaitingOverlayState extends State<GenerationWaitingOverlay> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '正在生成「${widget.type.label}」…',
+                            widget.title ??
+                                (widget.type == null
+                                    ? '正在处理…'
+                                    : '正在生成「${widget.type!.label}」…'),
                             style: theme.textTheme.labelLarge?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -231,43 +244,48 @@ class _GenerationWaitingOverlayState extends State<GenerationWaitingOverlay> {
                       bottom: 40,
                     ),
                     child: AnimatedOpacity(
-                      opacity: _hintVisible ? 1 : 0,
+                      opacity: !widget.dismissible || _hintVisible ? 1 : 0,
                       duration: kWaitingHintFadeIn,
                       curve: Curves.easeIn,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.touch_app_outlined,
-                                  size: 16,
-                                  color: Colors.white70,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  GenerationWaitingOverlay.dismissHint,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                          if (widget.dismissible)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.touch_app_outlined,
+                                    size: 16,
+                                    color: Colors.white70,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    GenerationWaitingOverlay.dismissHint,
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                           const SizedBox(height: 8),
                           Text(
-                            GenerationWaitingOverlay.autoOpenHint,
+                            widget.hint ??
+                                (widget.dismissible
+                                    ? GenerationWaitingOverlay.autoOpenHint
+                                    : '请稍候，完成后会自动继续'),
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: Colors.white70,
                             ),

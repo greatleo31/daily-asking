@@ -115,12 +115,27 @@ void main() {
     expect(message, isNot(contains('证据 id=')));
   });
 
-  test('出站披露只包含简明确认句', () {
+  test('出站披露包含简明确认句与记录条数', () {
     final payload = OutboundPayload(
       entries: const [],
       artifactType: ArtifactType.weekly,
     );
     final disclosure = payload.toDisclosure();
-    expect(disclosure, '将访问已配置的 AI 服务生成内容，是否确认？');
+    expect(disclosure, '将发送 0 条记录，访问已配置的 AI 服务生成内容，是否确认？');
+    final entry = Entry(
+      id: 'e_count',
+      date: DateTime(2026),
+      task: '不应出现在披露中的正文',
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+    for (final count in [1, 3]) {
+      final selected = OutboundPayload(
+        entries: List.filled(count, entry),
+        artifactType: ArtifactType.weekly,
+      ).toDisclosure();
+      expect(selected, '将发送 $count 条记录，访问已配置的 AI 服务生成内容，是否确认？');
+      expect(selected, isNot(contains(entry.task)));
+    }
   });
 }
