@@ -358,6 +358,13 @@ EvidenceAnswer _answer(String id, String questionId, String content) {
 }
 
 class _MemoryEntryRepository implements EntryRepository {
+  @override
+  Future<void> saveAll(List<Entry> entries) async {
+    for (final entry in entries) {
+      await save(entry);
+    }
+  }
+
   _MemoryEntryRepository(List<Entry> entries)
       : items = entries.map((entry) => entry.copy()).toList();
 
@@ -399,6 +406,19 @@ class _MemoryEntryRepository implements EntryRepository {
 }
 
 class _RecordingEvidenceRepository implements EvidenceRepository {
+  @override
+  Future<void> saveAll({
+    required List<EvidenceQuestion> questions,
+    required List<EvidenceAnswer> answers,
+  }) async {
+    for (final question in questions) {
+      await saveQuestion(question);
+    }
+    for (final answer in answers) {
+      await saveAnswer(answer);
+    }
+  }
+
   _RecordingEvidenceRepository({
     List<EvidenceQuestion> questions = const [],
     List<EvidenceAnswer> answers = const [],

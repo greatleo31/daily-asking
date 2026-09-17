@@ -12,6 +12,9 @@ import 'package:flutter/services.dart';
 import '../../app/app_state.dart';
 import '../models.dart';
 import '../../artifacts/structured_artifact.dart';
+import '../transfer/transfer_schema.dart';
+import '../transfer/transfer_partition.dart';
+import '../version.dart';
 
 /// 导出文件名时间戳：`20260814-2140`。
 String _stamp(DateTime t) {
@@ -228,11 +231,76 @@ Future<String> buildAllMarkdown(AppState state) async {
   return allEntriesToMarkdown(entries, qsByEntry, answersByQ);
 }
 
+/// 可再导入的结构化导出，与面向阅读的 Markdown 并存。
+String jsonFileName(DateTime now) => 'daily-asking-export-${_stamp(now)}.json';
+
+Future<String> buildAllJson(AppState state, {DateTime? now}) async =>
+    encodeTransfer(
+      await state.exportTransferData(),
+      exportedAt: now ?? DateTime.now(),
+      appVersion: kAppVersionName,
+    );
+
+/// 一个可独立导入的结构化导出文件。
+class TransferExportFile {
+  const TransferExportFile({required this.name, required this.content});
+
+  final String name;
+  final String content;
+}
+
+/// 从存储层读取新快照；超限时按完整记录组拆分，每份均可独立导入。
+Future<List<TransferExportFile>> buildAllJsonFiles(
+  AppState state, {
+  DateTime? now,
+}) async {
+  final snapshot = await state.exportTransferData();
+  final exportedAt = now ?? DateTime.now();
+  final parts = encodeTransferParts(
+    snapshot,
+    exportedAt: exportedAt,
+    appVersion: kAppVersionName,
+  );
+  final baseName = jsonFileName(exportedAt);
+  final stem = baseName.substring(0, baseName.length - '.json'.length);
+  final total = parts.length.toString().padLeft(3, '0');
+  return [
+    for (var i = 0; i < parts.length; i++)
+      TransferExportFile(
+        name: parts.length == 1
+            ? baseName
+            : '$stem-part-${(i + 1).toString().padLeft(3, '0')}-of-$total.json',
+        content: parts[i],
+      ),
+  ];
+}
+
 /// 原生分享通道：写文件 + 唤起系统分享面板。
 class MarkdownShare {
   static const MethodChannel _channel = MethodChannel(
     'com.dailyasking.daily_asking/export',
   );
+
+  /// 单文件保留原通道协议，多文件一次写完后通过同一个分享面板交付。
+  static Future<bool> shareFiles(List<TransferExportFile> files) async {
+    if (files.isEmpty) return false;
+    if (files.length == 1) {
+      return share(fileName: files.single.name, content: files.single.content);
+    }
+    try {
+      await _channel.invokeMethod<void>('shareFiles', <String, Object?>{
+        'files': [
+          for (final file in files)
+            <String, String>{'fileName': file.name, 'content': file.content},
+        ],
+      });
+      return true;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 
   /// 返回 true 表示已成功写文件并唤起分享；false 表示失败。
   static Future<bool> share({

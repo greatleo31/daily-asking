@@ -25,7 +25,7 @@ class OutboundPayload {
   final ArtifactType artifactType;
 
   /// 出站确认只说明即将访问已配置的 AI 服务，不泄露实现细节。
-  String toDisclosure() => '将访问已配置的 AI 服务生成内容，是否确认？';
+  String toDisclosure() => '将发送 ${entries.length} 条记录，访问已配置的 AI 服务生成内容，是否确认？';
 
   /// 组装发送给模型的 Markdown-first 系统提示词。
   String buildSystemPrompt(ArtifactType type) => systemPromptFor(type);

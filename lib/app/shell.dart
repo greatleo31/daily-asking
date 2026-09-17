@@ -97,9 +97,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         final ok = await state.updateService.downloadAndInstall(info);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ok ? '已开始下载，可在通知栏查看进度' : '更新下载失败，请重试'),
-          ),
+          SnackBar(content: Text(ok ? '已开始下载，可在通知栏查看进度' : '更新下载失败，请重试')),
         );
       },
     );
@@ -145,11 +143,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
       body: IndexedStack(
         index: _index,
-        children: const [
-          TodayPage(),
-          EvidencePage(),
-          StudioPage(),
-          SettingsPage(),
+        children: [
+          const TodayPage(),
+          const EvidencePage(),
+          const StudioPage(),
+          SettingsPage(onViewImportedRecords: () => setState(() => _index = 1)),
         ],
       ),
       bottomNavigationBar: NavigationBar(

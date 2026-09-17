@@ -9,6 +9,7 @@ abstract class ArtifactRepository {
   Future<List<Artifact>> list();
   Future<Artifact?> find(String id);
   Future<void> save(Artifact artifact);
+  Future<void> saveAll(List<Artifact> artifacts);
   Future<void> delete(String id);
 }
 
@@ -45,21 +46,45 @@ class LocalArtifactRepository implements ArtifactRepository {
   @override
   Future<void> save(Artifact artifact) async {
     await _ensure();
-    final i = _cache.indexWhere((a) => a.id == artifact.id);
+    final next = List<Artifact>.of(_cache);
+    final i = next.indexWhere((a) => a.id == artifact.id);
     if (i >= 0) {
-      _cache[i] = artifact;
+      next[i] = artifact;
     } else {
-      _cache.add(artifact);
+      next.add(artifact);
     }
-    _cache.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    await _store.writeList(_key, _cache.map((e) => e.toJson()).toList());
+    await _persist(next);
+  }
+
+  /// 一批合并后只写一次，并隔离导入方持有的可变列表。
+  @override
+  Future<void> saveAll(List<Artifact> artifacts) async {
+    final rows = await _store.readList(_key);
+    final merged = <String, Artifact>{
+      for (final row in rows) row['id'] as String: Artifact.fromJson(row),
+      for (final artifact in artifacts)
+        artifact.id: Artifact.fromJson({
+          ...artifact.toJson(),
+          'sourceEntryIds': List<String>.of(artifact.sourceEntryIds),
+          'risks': List<String>.of(artifact.risks),
+          'gaps': List<String>.of(artifact.gaps),
+          'structuredIssues': List<String>.of(artifact.structuredIssues),
+        }),
+    };
+    await _persist(merged.values.toList());
+    _loaded = true;
   }
 
   @override
   Future<void> delete(String id) async {
     await _ensure();
-    _cache.removeWhere((a) => a.id == id);
-    await _store.writeList(_key, _cache.map((e) => e.toJson()).toList());
+    await _persist(_cache.where((a) => a.id != id).toList());
+  }
+
+  Future<void> _persist(List<Artifact> next) async {
+    next.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    await _store.writeList(_key, next.map((e) => e.toJson()).toList());
+    _cache = next;
   }
 }
 

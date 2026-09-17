@@ -10,6 +10,10 @@ abstract class EvidenceRepository {
   Future<List<EvidenceAnswer>> answersFor(String questionId);
   Future<void> saveQuestion(EvidenceQuestion q);
   Future<void> saveAnswer(EvidenceAnswer a);
+  Future<void> saveAll({
+    required List<EvidenceQuestion> questions,
+    required List<EvidenceAnswer> answers,
+  });
   Future<void> deleteForEntry(String entryId);
   Future<List<EvidenceQuestion>> openQuestionsFor(String entryId);
 
@@ -38,7 +42,9 @@ class LocalEvidenceRepository implements EvidenceRepository {
 
   Future<void> _ensure() async {
     if (_loaded) return;
-    _qs = (await _store.readList(_qKey)).map(EvidenceQuestion.fromJson).toList();
+    _qs = (await _store.readList(
+      _qKey,
+    )).map(EvidenceQuestion.fromJson).toList();
     _as = (await _store.readList(_aKey)).map(EvidenceAnswer.fromJson).toList();
     _loaded = true;
   }
@@ -53,44 +59,86 @@ class LocalEvidenceRepository implements EvidenceRepository {
   @override
   Future<List<EvidenceAnswer>> answersFor(String questionId) async {
     await _ensure();
-    return _as
-        .where((a) => a.questionId == questionId)
-        .toList()
+    return _as.where((a) => a.questionId == questionId).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
   @override
   Future<void> saveQuestion(EvidenceQuestion q) async {
     await _ensure();
-    final i = _qs.indexWhere((e) => e.id == q.id);
+    final next = List<EvidenceQuestion>.of(_qs);
+    final i = next.indexWhere((e) => e.id == q.id);
     if (i >= 0) {
-      _qs[i] = q;
+      next[i] = q;
     } else {
-      _qs.add(q);
+      next.add(q);
     }
-    await _store.writeList(_qKey, _qs.map((e) => e.toJson()).toList());
+    await _store.writeList(_qKey, next.map((e) => e.toJson()).toList());
+    _qs = next;
   }
 
   @override
   Future<void> saveAnswer(EvidenceAnswer a) async {
     await _ensure();
-    final i = _as.indexWhere((e) => e.id == a.id);
+    final next = List<EvidenceAnswer>.of(_as);
+    final i = next.indexWhere((e) => e.id == a.id);
     if (i >= 0) {
-      _as[i] = a;
+      next[i] = a;
     } else {
-      _as.add(a);
+      next.add(a);
     }
-    await _store.writeList(_aKey, _as.map((e) => e.toJson()).toList());
+    await _store.writeList(_aKey, next.map((e) => e.toJson()).toList());
+    _as = next;
+  }
+
+  /// 两个 key 各写一次，并分别在写入成功后更新缓存；不承诺跨 key 事务。
+  @override
+  Future<void> saveAll({
+    required List<EvidenceQuestion> questions,
+    required List<EvidenceAnswer> answers,
+  }) async {
+    final persistedQuestions = (await _store.readList(
+      _qKey,
+    )).map(EvidenceQuestion.fromJson).toList();
+    final persistedAnswers = (await _store.readList(
+      _aKey,
+    )).map(EvidenceAnswer.fromJson).toList();
+    _qs = persistedQuestions;
+    _as = persistedAnswers;
+    _loaded = true;
+    final nextQuestions = <String, EvidenceQuestion>{
+      for (final q in persistedQuestions) q.id: q,
+      for (final q in questions) q.id: EvidenceQuestion.fromJson(q.toJson()),
+    }.values.toList();
+    final nextAnswers = <String, EvidenceAnswer>{
+      for (final a in persistedAnswers) a.id: a,
+      for (final a in answers) a.id: EvidenceAnswer.fromJson(a.toJson()),
+    }.values.toList();
+    await _store.writeList(
+      _qKey,
+      nextQuestions.map((q) => q.toJson()).toList(),
+    );
+    _qs = nextQuestions;
+    await _store.writeList(_aKey, nextAnswers.map((a) => a.toJson()).toList());
+    _as = nextAnswers;
   }
 
   @override
   Future<void> deleteForEntry(String entryId) async {
     await _ensure();
-    final qids = _qs.where((q) => q.entryId == entryId).map((q) => q.id).toSet();
-    _qs.removeWhere((q) => q.entryId == entryId);
-    _as.removeWhere((a) => qids.contains(a.questionId));
-    await _store.writeList(_qKey, _qs.map((e) => e.toJson()).toList());
-    await _store.writeList(_aKey, _as.map((e) => e.toJson()).toList());
+    final qids = _qs
+        .where((q) => q.entryId == entryId)
+        .map((q) => q.id)
+        .toSet();
+    final nextQuestions = _qs.where((q) => q.entryId != entryId).toList();
+    final nextAnswers = _as.where((a) => !qids.contains(a.questionId)).toList();
+    await _store.writeList(
+      _qKey,
+      nextQuestions.map((e) => e.toJson()).toList(),
+    );
+    _qs = nextQuestions;
+    await _store.writeList(_aKey, nextAnswers.map((e) => e.toJson()).toList());
+    _as = nextAnswers;
   }
 
   /// 列出某一 entry 尚未结束（pending / later）的追问。

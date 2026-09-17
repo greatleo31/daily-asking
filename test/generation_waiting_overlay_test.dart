@@ -61,14 +61,8 @@ void main() {
       tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
       1,
     );
-    expect(
-      find.text(GenerationWaitingOverlay.dismissHint),
-      findsOneWidget,
-    );
-    expect(
-      find.text(GenerationWaitingOverlay.autoOpenHint),
-      findsOneWidget,
-    );
+    expect(find.text(GenerationWaitingOverlay.dismissHint), findsOneWidget);
+    expect(find.text(GenerationWaitingOverlay.autoOpenHint), findsOneWidget);
     expect(dismissed, isFalse);
 
     // 此时点击空白处才关闭蒙层
@@ -111,6 +105,46 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(dismissed, isTrue);
+    expect(find.byType(GenerationWaitingOverlay), findsNothing);
+  });
+
+  testWidgets('导入蒙层使用通用文案，全程拦截点击与返回', (tester) async {
+    final navigator = GlobalKey<NavigatorState>();
+    var dismissed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: const Scaffold(body: Text('底层页面')),
+      ),
+    );
+    navigator.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => GenerationWaitingOverlay(
+          title: '正在导入…',
+          hint: '正在保存记录，请稍候',
+          dismissible: false,
+          onDismiss: () => dismissed = true,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('正在导入…'), findsOneWidget);
+    expect(find.text('正在保存记录，请稍候'), findsOneWidget);
+    expect(find.text(GenerationWaitingOverlay.dismissHint), findsNothing);
+    for (final wait in [
+      Duration.zero,
+      kCompanionSceneLoop + kWaitingHintFadeIn,
+    ]) {
+      await tester.pump(wait);
+      await tester.tap(find.byType(GenerationWaitingOverlay));
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.byType(GenerationWaitingOverlay), findsOneWidget);
+      expect(dismissed, isFalse);
+    }
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
     expect(find.byType(GenerationWaitingOverlay), findsNothing);
   });
 }
